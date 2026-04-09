@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Creator Discovery Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --text: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --soft-red: #fff1f2;
+      --red: #ef4444;
+      --red-dark: #b91c1c;
+      --navy: #0f172a;
+      --green-border: #bbf7d0;
+      --green-text: #166534;
+      --blue-border: #bfdbfe;
+      --blue-text: #1d4ed8;
+      --shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+      --radius-xl: 24px;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, #fff1f2 0%, transparent 24%),
+        linear-gradient(180deg, #fffdfd 0%, #f8fafc 34%, #f8fafc 100%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px 24px 40px;
+    }
+
+    .auth-shell,
+    .hero,
+    .panel,
+    .results-shell,
+    .video-card,
+    .paywall,
+    .success-banner,
+    .reset-box {
+      background: rgba(255,255,255,0.97);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+    }
+
+    .auth-shell {
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .auth-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .auth-mode-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 6px;
+    }
+
+    .auth-mode-button {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .auth-mode-active {
+      background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+      color: #fff;
+      box-shadow: 0 10px 18px rgba(239, 68, 68, 0.18);
+    }
+
+    .auth-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .auth-form-hidden {
+      display: none;
+    }
+
+    .auth-user {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .user-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: var(--soft-red);
+      border: 1px solid #fecdd3;
+      color: #9f1239;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .small-ghost {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 24px;
+      align-items: center;
+      padding: 26px 28px;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #ffffff 0%, #fff7f7 100%);
+      border: 1px solid #fecdd3;
+    }
+
+    .hero-logo {
+      width: 140px;
+      height: 140px;
+      border-radius: 26px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #fee2e2;
+      overflow: hidden;
+      box-shadow: 0 10px 22px rgba(239, 68, 68, 0.08);
+    }
+
+    .hero-logo img {
+      width: 78%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+    }
+
+    .hero-copy h1 {
+      margin: 0 0 10px;
+      font-size: 44px;
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-copy p {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.4;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .hero-subtext {
+      margin-top: 10px;
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--muted);
+      max-width: 860px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .panel {
+      padding: 22px;
+      position: sticky;
+      top: 20px;
+    }
+
+    .panel h2,
+    .results-top h2 {
+      margin: 0 0 14px;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 13px 14px;
+      font-size: 16px;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: #f87171;
+      box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.12);
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      margin: 2px 0 18px;
+    }
+
+    .checkbox-row input {
+      width: 18px;
+      height: 18px;
+    }
+
+    .primary-button,
+    .auth-button,
+    .upgrade-button,
+    .copy-button,
+    .video-link,
+    .forgot-button,
+    .reset-button {
+      border: none;
+      border-radius: 16px;
+      font-family: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .primary-button:hover,
+    .auth-button:hover,
+    .upgrade-button:hover,
+    .copy-button:hover,
+    .video-link:hover,
+    .small-ghost:hover,
+    .forgot-button:hover,
+    .reset-button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-button {
+      width: 100%;
+      padding: 15px 16px;
+      font-size: 18px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+      box-shadow: 0 14px 24px rgba(239, 68, 68, 0.22);
+    }
+
+    .auth-button,
+    .upgrade-button,
+    .reset-button {
+      padding: 13px 16px;
+      font-size: 15px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+      box-shadow: 0 12px 20px rgba(239, 68, 68, 0.18);
+    }
+
+    .forgot-button {
+      padding: 10px 14px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--text);
+      border: 1px solid #cbd5e1;
+    }
+
+    .status {
+      min-height: 18px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .success-banner,
+    .paywall,
+    .results-shell,
+    .reset-box {
+      padding: 22px;
+      margin-bottom: 16px;
+    }
+
+    .success-banner {
+      display: none;
+      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+      border-color: var(--green-border);
+      color: var(--green-text);
+    }
+
+    .reset-box {
+      display: none;
+      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+      border-color: var(--blue-border);
+      color: var(--blue-text);
+    }
+
+    .success-banner h3,
+    .paywall h3,
+    .reset-box h3 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .success-banner p,
+    .paywall p,
+    .reset-box p {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .paywall {
+      display: none;
+      background: linear-gradient(135deg, #fff7f7 0%, #fff 100%);
+      border-color: #fecdd3;
+    }
+
+    .paywall p {
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .paywall-actions,
+    .reset-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .results-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .results-summary {
+      margin: 4px 0 0;
+      font-size: 17px;
+      color: var(--muted);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--soft-red);
+      color: #be123c;
+      border: 1px solid #fecdd3;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill::before {
+      content: '▶';
+      font-size: 10px;
+    }
+
+    .empty-state,
+    .loading-state {
+      border: 1px dashed #cbd5e1;
+      border-radius: 20px;
+      padding: 40px 24px;
+      text-align: center;
+      font-size: 18px;
+      color: var(--muted);
+      background: #fff;
+    }
+
+    .results-list {
+      display: grid;
+      gap: 18px;
+    }
+
+    .video-card {
+      padding: 22px;
+    }
+
+    .video-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .video-title {
+      margin: 0 0 12px;
+      font-size: 26px;
+      line-height: 1.18;
+      letter-spacing: -0.03em;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 20px;
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 700px;
+    }
+
+    .meta-item strong {
+      color: var(--text);
+    }
+
+    .engagement-badge {
+      min-width: 160px;
+      background: linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%);
+      border: 1px solid #fecdd3;
+      border-radius: 18px;
+      padding: 14px 16px;
+      text-align: center;
+      color: #9f1239;
+    }
+
+    .engagement-label {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .engagement-value {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .comments-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .comment-box {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+      padding: 15px;
+    }
+
+    .comment-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #b91c1c;
+    }
+
+    .comment-label::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--red);
+    }
+
+    .comment-text {
+      margin: 0 0 12px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #111827;
+    }
+
+    .comment-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .copy-button,
+    .video-link {
+      padding: 10px 14px;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .copy-button {
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .video-link {
+      background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(239, 68, 68, 0.18);
+    }
+
+    .video-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 18px;
+    }
+
+    @media (max-width: 1160px) {
+      .auth-form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .auth-form-grid .auth-button {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .hero {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .hero-copy h1 {
+        font-size: 40px;
+      }
+
+      .hero-copy p {
+        font-size: 21px;
+      }
+
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        position: static;
+      }
+
+      .video-card-top {
+        flex-direction: column;
+      }
+
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .results-top {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .auth-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .auth-user {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 18px 14px 28px;
+      }
+
+      .hero {
+        padding: 20px;
+        grid-template-columns: 88px 1fr;
+        gap: 14px;
+      }
+
+      .hero-logo {
+        width: 88px;
+        height: 88px;
+      }
+
+      .hero-copy h1 {
+        font-size: 34px;
+      }
+
+      .hero-copy p {
+        font-size: 18px;
+      }
+
+      .grid-two {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="auth-shell">
+      <div class="auth-top-row">
+        <div class="auth-mode-group">
+          <button id="authModeLogin" class="auth-mode-button auth-mode-active" type="button">Login</button>
+          <button id="authModeRegister" class="auth-mode-button" type="button">Register</button>
+        </div>
+        <div class="auth-user">
+          <div id="userChip" class="user-chip" style="display:none;"></div>
+          <button id="logoutButton" class="small-ghost" style="display:none;">Log Out</button>
+        </div>
+      </div>
+
+      <div id="authFormGrid" class="auth-form-grid">
+        <div class="field" style="margin:0;">
+          <label for="authEmail">Email</label>
+          <input id="authEmail" type="email" placeholder="you@example.com" />
+        </div>
+        <div class="field" style="margin:0;">
+          <label for="authPassword">Password</label>
+          <input id="authPassword" type="password" placeholder="Your password" />
+        </div>
+        <button id="authSubmitButton" class="auth-button">Log In</button>
+      </div>
+
+      <div class="reset-actions" style="margin-top:12px;">
+        <button id="forgotPasswordButton" class="forgot-button" type="button">Forgot password?</button>
+      </div>
+
+      <div id="authStatus" class="status"></div>
+    </section>
+
+    <section id="resetBox" class="reset-box">
+      <h3>Reset your password</h3>
+      <p id="resetInfoText">Enter your new password to complete the reset.</p>
+      <div class="auth-form-grid" style="margin-top:14px;">
+        <div class="field" style="margin:0;">
+          <label for="resetPasswordInput">New Password</label>
+          <input id="resetPasswordInput" type="password" placeholder="Minimum 6 characters" />
+        </div>
+        <div></div>
+        <button id="resetPasswordButton" class="reset-button" type="button">Set New Password</button>
+      </div>
+      <div id="resetStatus" class="status"></div>
+    </section>
+
+    <section class="hero">
+      <div class="hero-logo">
+        <img src="./logo.png" alt="Creator Discovery Assistant logo" />
+      </div>
+      <div class="hero-copy">
+        <h1>YouTube Creator Discovery Assistant</h1>
+        <p>Discover the right creators, write smarter comments with AI, and grow faster.</p>
+        <div class="hero-subtext">Find small creators in your niche, explore relevant videos, and choose AI-assisted comment suggestions designed to feel natural and creator-friendly.</div>
+      </div>
+    </section>
+
+    <section class="content">
+      <aside class="panel">
+        <h2>Filters</h2>
+
+        <div class="field">
+          <label for="niche">Niche</label>
+          <select id="niche">
+            <option value="food">Food</option>
+            <option value="fitness">Fitness</option>
+            <option value="beauty">Beauty</option>
+            <option value="coding">Coding</option>
+            <option value="travel">Travel</option>
+          </select>
+        </div>
+
+        <div class="grid-two">
+          <div class="field">
+            <label for="subscriberMin">Subscriber Min</label>
+            <input id="subscriberMin" type="number" value="1000" min="0" />
+          </div>
+          <div class="field">
+            <label for="subscriberMax">Subscriber Max</label>
+            <input id="subscriberMax" type="number" value="20000" min="0" />
+          </div>
+        </div>
+
+        <div class="grid-two">
+          <div class="field">
+            <label for="minEngagementScore">Min Engagement</label>
+            <input id="minEngagementScore" type="number" value="0.05" min="0" max="1" step="0.01" />
+          </div>
+          <div class="field">
+            <label for="minVideoCommentCount">Min Comments</label>
+            <input id="minVideoCommentCount" type="number" value="5" min="0" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="maxResults">Max Results</label>
+          <input id="maxResults" type="number" value="5" min="1" max="20" />
+        </div>
+
+        <label class="checkbox-row" for="onlyActiveCreators">
+          <input id="onlyActiveCreators" type="checkbox" />
+          <span>Only active creators</span>
+        </label>
+
+        <button id="findButton" class="primary-button">Find Videos</button>
+        <div id="searchStatus" class="status">You can explore the app first. Sign in when you are ready to run your first search.</div>
+      </aside>
+
+      <main>
+        <div id="successBanner" class="success-banner">
+          <h3>Payment successful</h3>
+          <p id="successBannerText">Your account has been unlocked. You now have full access.</p>
+        </div>
+
+        <div id="paywallBox" class="paywall">
+          <h3>Free searches used</h3>
+          <p id="paywallText">You used your 5 free searches. Unlock unlimited creator discovery and AI-powered comment suggestions with a one-time payment of €4.99.</p>
+          <div class="paywall-actions">
+            <button id="upgradeButton" class="upgrade-button">Unlock for €4.99</button>
+          </div>
+        </div>
+
+        <section class="results-shell">
+          <div class="results-top">
+            <div>
+              <h2>Recommendations</h2>
+              <p id="resultsSummary" class="results-summary">No search yet.</p>
+            </div>
+            <div class="pill">Creator-ready suggestions</div>
+          </div>
+
+          <div id="resultsContainer">
+            <div class="empty-state">Run a search to see recommended videos and comment suggestions.</div>
+          </div>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <script>
+    const API_BASE_URL = 'http://127.0.0.1:8000';
+    const STORAGE_TOKEN_KEY = 'ycda_access_token';
+    const STORAGE_USER_KEY = 'ycda_user';
+    const ONE_TIME_PRICE_LABEL = '€4.99';
+
+    let authMode = 'login';
+
+    const authEmailEl = document.getElementById('authEmail');
+    const authPasswordEl = document.getElementById('authPassword');
+    const authSubmitButtonEl = document.getElementById('authSubmitButton');
+    const authModeLoginEl = document.getElementById('authModeLogin');
+    const authModeRegisterEl = document.getElementById('authModeRegister');
+    const logoutButtonEl = document.getElementById('logoutButton');
+    const userChipEl = document.getElementById('userChip');
+    const authStatusEl = document.getElementById('authStatus');
+    const authFormGridEl = document.getElementById('authFormGrid');
+    const forgotPasswordButtonEl = document.getElementById('forgotPasswordButton');
+
+    const resetBoxEl = document.getElementById('resetBox');
+    const resetInfoTextEl = document.getElementById('resetInfoText');
+    const resetPasswordInputEl = document.getElementById('resetPasswordInput');
+    const resetPasswordButtonEl = document.getElementById('resetPasswordButton');
+    const resetStatusEl = document.getElementById('resetStatus');
+
+    const nicheEl = document.getElementById('niche');
+    const subscriberMinEl = document.getElementById('subscriberMin');
+    const subscriberMaxEl = document.getElementById('subscriberMax');
+    const minEngagementScoreEl = document.getElementById('minEngagementScore');
+    const minVideoCommentCountEl = document.getElementById('minVideoCommentCount');
+    const onlyActiveCreatorsEl = document.getElementById('onlyActiveCreators');
+    const maxResultsEl = document.getElementById('maxResults');
+    const findButtonEl = document.getElementById('findButton');
+    const resultsContainerEl = document.getElementById('resultsContainer');
+    const resultsSummaryEl = document.getElementById('resultsSummary');
+    const searchStatusEl = document.getElementById('searchStatus');
+    const paywallBoxEl = document.getElementById('paywallBox');
+    const paywallTextEl = document.getElementById('paywallText');
+    const upgradeButtonEl = document.getElementById('upgradeButton');
+    const successBannerEl = document.getElementById('successBanner');
+    const successBannerTextEl = document.getElementById('successBannerText');
+
+    function getToken() {
+      return localStorage.getItem(STORAGE_TOKEN_KEY);
+    }
+
+    function getStoredUser() {
+      const raw = localStorage.getItem(STORAGE_USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }
+
+    function saveSession(token, user) {
+      localStorage.setItem(STORAGE_TOKEN_KEY, token);
+      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user));
+      updateAuthUI();
+    }
+
+    function clearSession() {
+      localStorage.removeItem(STORAGE_TOKEN_KEY);
+      localStorage.removeItem(STORAGE_USER_KEY);
+      updateAuthUI();
+    }
+
+    function isPaidUser(user) {
+      return !!user &&
+        (user.plan_type === 'paid' || user.plan_type === 'premium') &&
+        user.payment_status === 'paid';
+    }
+
+    function updateAuthModeUI() {
+      const isLogin = authMode === 'login';
+      authModeLoginEl.classList.toggle('auth-mode-active', isLogin);
+      authModeRegisterEl.classList.toggle('auth-mode-active', !isLogin);
+      authSubmitButtonEl.textContent = isLogin ? 'Log In' : 'Create Account';
+      authPasswordEl.placeholder = isLogin ? 'Your password' : 'Minimum 6 characters';
+
+      if (!getStoredUser()) {
+        authStatusEl.textContent = isLogin
+          ? 'Log in to continue where you left off.'
+          : 'Create your account to get 5 free searches.';
+      }
+    }
+
+    function showSuccessBanner(message) {
+      successBannerTextEl.textContent = message || 'Your account has been unlocked. You now have full access.';
+      successBannerEl.style.display = 'block';
+    }
+
+    function hideSuccessBanner() {
+      successBannerEl.style.display = 'none';
+    }
+
+    function showPaywall(message) {
+      hideSuccessBanner();
+      paywallTextEl.textContent = message || `You used your 5 free searches. Unlock full access for a one-time payment of ${ONE_TIME_PRICE_LABEL}.`;
+      paywallBoxEl.style.display = 'block';
+    }
+
+    function hidePaywall() {
+      paywallBoxEl.style.display = 'none';
+    }
+
+    function showResetBox(token) {
+      resetBoxEl.style.display = 'block';
+      resetBoxEl.dataset.token = token || '';
+      resetStatusEl.textContent = '';
+      resetPasswordInputEl.value = '';
+    }
+
+    function hideResetBox() {
+      resetBoxEl.style.display = 'none';
+      resetBoxEl.dataset.token = '';
+      resetStatusEl.textContent = '';
+      resetPasswordInputEl.value = '';
+    }
+
+    function updateAuthUI() {
+      const user = getStoredUser();
+
+      if (user) {
+        const paid = isPaidUser(user);
+        const remaining = Math.max(0, 5 - (user.free_search_count || 0));
+
+        userChipEl.style.display = 'inline-flex';
+        logoutButtonEl.style.display = 'inline-flex';
+        authFormGridEl.classList.add('auth-form-hidden');
+        forgotPasswordButtonEl.style.display = 'none';
+        authModeLoginEl.style.display = 'none';
+        authModeRegisterEl.style.display = 'none';
+
+        userChipEl.textContent = `${user.email} • ${paid ? 'paid' : user.plan_type}`;
+        authStatusEl.textContent = paid
+          ? 'Welcome back. Your paid access is active.'
+          : `Welcome back. You have ${remaining} free searches left.`;
+
+        searchStatusEl.textContent = paid
+          ? 'Paid access unlocked. Search as much as you want.'
+          : 'Your free searches are tracked on your account.';
+
+        if (paid) {
+          hidePaywall();
+        }
+      } else {
+        userChipEl.style.display = 'none';
+        logoutButtonEl.style.display = 'none';
+        authFormGridEl.classList.remove('auth-form-hidden');
+        forgotPasswordButtonEl.style.display = 'inline-flex';
+        authModeLoginEl.style.display = 'inline-flex';
+        authModeRegisterEl.style.display = 'inline-flex';
+        searchStatusEl.textContent = 'You can explore the app first. Sign in when you are ready to run your first search.';
+      }
+    }
+
+    function buildPayload() {
+      return {
+        niche: nicheEl.value,
+        subscriber_min: Number(subscriberMinEl.value),
+        subscriber_max: Number(subscriberMaxEl.value),
+        min_engagement_score: Number(minEngagementScoreEl.value),
+        min_video_comment_count: Number(minVideoCommentCountEl.value),
+        only_active_creators: onlyActiveCreatorsEl.checked,
+        max_results: Number(maxResultsEl.value)
+      };
+    }
+
+    function normalizeCommentText(text) {
+      let value = String(text || '').trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")) ||
+        (value.startsWith('“') && value.endsWith('”')) ||
+        (value.startsWith('‘') && value.endsWith('’'))
+      ) {
+        value = value.slice(1, -1).trim();
+      }
+      return value;
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\\"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderLoading() {
+      hidePaywall();
+      resultsSummaryEl.textContent = 'Searching...';
+      resultsContainerEl.innerHTML = '<div class="loading-state">Loading recommendations...</div>';
+      searchStatusEl.textContent = 'Calling backend...';
+    }
+
+    function renderEmpty() {
+      resultsSummaryEl.textContent = '0 results';
+      resultsContainerEl.innerHTML = '<div class="empty-state">No results matched these filters. Try widening your subscriber range or lowering the minimum filters.</div>';
+    }
+
+    function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+
+      if (successful) {
+        resolve();
+      } else {
+        reject(new Error('Copy command failed'));
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+    function buildAuthHeaders(withJson = true) {
+      const headers = {};
+      const token = getToken();
+      if (withJson) headers['Content-Type'] = 'application/json';
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      return headers;
+    }
+
+    async function authenticatedFetch(path, options = {}) {
+      return fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        headers: {
+          ...buildAuthHeaders(!options.headers || !options.headers['Content-Type']),
+          ...(options.headers || {})
+        }
+      });
+    }
+
+    async function refreshCurrentUser() {
+      if (!getToken()) return;
+      try {
+        const response = await authenticatedFetch('/auth/me', { method: 'GET' });
+        if (response.ok) {
+          const user = await response.json();
+          saveSession(getToken(), user);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function markOpened(interactionId) {
+      try {
+        await fetch(`${API_BASE_URL}/interactions/${interactionId}?opened=true`, {
+          method: 'PATCH',
+          headers: buildAuthHeaders(false)
+        });
+      } catch (error) {
+        console.error('Open tracking failed', error);
+      }
+    }
+
+    async function markCopied(interactionId) {
+      try {
+        await fetch(`${API_BASE_URL}/interactions/${interactionId}?copied=true&selected=true`, {
+          method: 'PATCH',
+          headers: buildAuthHeaders(false)
+        });
+        searchStatusEl.textContent = 'Comment copied and tracked.';
+      } catch (error) {
+        console.error('Copy tracking failed', error);
+        searchStatusEl.textContent = 'Comment copied, but tracking failed.';
+      }
+    }
+
+    function renderResults(data) {
+      if (!data.results || data.results.length === 0) {
+        renderEmpty();
+        return;
+      }
+
+      resultsSummaryEl.textContent = `${data.total_results} result(s) found`;
+
+      const html = data.results.map(item => {
+        const video = item.video;
+        const comments = item.suggested_comments || [];
+
+        const commentsHtml = comments.map(comment => {
+          const cleanComment = normalizeCommentText(comment);
+          const safeComment = JSON.stringify(cleanComment);
+
+          return `
+            <div class="comment-box">
+              <div class="comment-label">AI Comment Suggestion</div>
+              <p class="comment-text">${escapeHtml(cleanComment)}</p>
+              <div class="comment-actions">
+                <button class="copy-button" onclick='handleCopy(${item.interaction_id}, ${safeComment})'>Copy Comment</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const engagementPercent = Math.round(Number(video.engagement_score || 0) * 100);
+
+        return `
+          <article class="video-card">
+            <div class="video-card-top">
+              <div>
+                <h3 class="video-title">${escapeHtml(video.title)}</h3>
+                <div class="meta-grid">
+                  <div class="meta-item"><strong>Channel:</strong> ${escapeHtml(video.channel_name)}</div>
+                  <div class="meta-item"><strong>Subscribers:</strong> ${Number(video.subscriber_count).toLocaleString()}</div>
+                  <div class="meta-item"><strong>Comments:</strong> ${Number(video.comment_count).toLocaleString()}</div>
+                  <div class="meta-item"><strong>Reply Ratio:</strong> ${video.creator_reply_ratio}</div>
+                  <div class="meta-item"><strong>Days Since Upload:</strong> ${video.days_since_upload}</div>
+                </div>
+              </div>
+              <div class="engagement-badge">
+                <div class="engagement-label">Engagement Score</div>
+                <div class="engagement-value">${engagementPercent}%</div>
+              </div>
+            </div>
+
+            <div class="comments-list">${commentsHtml}</div>
+
+            <div class="video-actions">
+              <a class="video-link" href="${video.video_url}" target="_blank" rel="noopener noreferrer" onclick="handleOpen(${item.interaction_id})">Open Video on YouTube</a>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      resultsContainerEl.innerHTML = `<div class="results-list">${html}</div>`;
+    }
+
+    async function submitAuth() {
+      const email = authEmailEl.value.trim();
+      const password = authPasswordEl.value.trim();
+      const path = authMode === 'login' ? '/auth/login' : '/auth/register';
+
+      if (!email || !password) {
+        authStatusEl.textContent = authMode === 'login'
+          ? 'Enter your email and password to log in.'
+          : 'Enter your email and password to create your account.';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}${path}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(typeof data.detail === 'string' ? data.detail : `${authMode} failed`);
+        }
+
+        saveSession(data.access_token, data.user);
+        authStatusEl.textContent = authMode === 'login'
+          ? `Welcome back, ${data.user.email}.`
+          : `Your account is ready, ${data.user.email}. You now have 5 free searches.`;
+
+        authEmailEl.value = '';
+        authPasswordEl.value = '';
+      } catch (error) {
+        authStatusEl.textContent = authMode === 'login'
+          ? `Login failed. ${error.message || 'Please try again.'}`
+          : `Register failed. ${error.message || 'Please try again.'}`;
+      }
+    }
+
+    async function requestPasswordReset() {
+      const email = authEmailEl.value.trim();
+
+      if (!email) {
+        authStatusEl.textContent = 'Enter your email first, then click Forgot password.';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/password/forgot`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Could not create password reset link.');
+        }
+
+        authStatusEl.textContent = data.message || 'Password reset link created.';
+
+        if (data.reset_token) {
+          const params = new URLSearchParams(window.location.search);
+          params.set('reset_token', data.reset_token);
+          window.history.replaceState({}, document.title, `${window.location.pathname}?${params.toString()}`);
+          resetInfoTextEl.textContent = 'A reset token was created. Enter your new password below.';
+          showResetBox(data.reset_token);
+        }
+      } catch (error) {
+        authStatusEl.textContent = error.message || 'Could not create reset link.';
+      }
+    }
+
+    async function submitPasswordReset() {
+      const token = resetBoxEl.dataset.token;
+      const newPassword = resetPasswordInputEl.value.trim();
+
+      if (!token) {
+        resetStatusEl.textContent = 'Reset token is missing.';
+        return;
+      }
+
+      if (!newPassword) {
+        resetStatusEl.textContent = 'Enter your new password.';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/password/reset`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token,
+            new_password: newPassword
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Password reset failed.');
+        }
+
+        resetStatusEl.textContent = 'Password reset successful. You can now log in with your new password.';
+        authStatusEl.textContent = 'Password reset successful. Please log in.';
+        hideResetBox();
+
+        const params = new URLSearchParams(window.location.search);
+        params.delete('reset_token');
+        const query = params.toString();
+        window.history.replaceState({}, document.title, query ? `${window.location.pathname}?${query}` : window.location.pathname);
+      } catch (error) {
+        resetStatusEl.textContent = error.message || 'Password reset failed.';
+      }
+    }
+
+    async function upgradeUser() {
+      try {
+        const response = await authenticatedFetch('/billing/create-checkout-session', {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Could not start checkout.');
+        }
+
+        window.location.href = data.checkout_url;
+      } catch (error) {
+        searchStatusEl.textContent = error.message || 'Could not start payment.';
+      }
+    }
+
+    async function loadRecommendations() {
+      if (!getToken()) {
+        searchStatusEl.textContent = 'Please create a free account or log in to use your 5 free searches.';
+        return;
+      }
+
+      const user = getStoredUser();
+      if (!user) {
+        searchStatusEl.textContent = 'Session not ready yet. Please try again.';
+        return;
+      }
+
+      renderLoading();
+      findButtonEl.disabled = true;
+
+      try {
+        const response = await authenticatedFetch('/search/recommendations', {
+          method: 'POST',
+          body: JSON.stringify(buildPayload())
+        });
+
+        if (response.status === 402) {
+          const data = await response.json();
+          const detail = data.detail || {};
+
+          showPaywall(detail.message || `You used your 5 free searches. Unlock full access for a one-time payment of ${ONE_TIME_PRICE_LABEL}.`);
+          resultsSummaryEl.textContent = 'Unlock required';
+          resultsContainerEl.innerHTML = `<div class="empty-state">Your free searches are finished. Unlock full access with a one-time payment of ${ONE_TIME_PRICE_LABEL}.</div>`;
+          searchStatusEl.textContent = 'Free limit reached. Unlock to continue.';
+          return;
+        }
+
+        if (response.status === 401) {
+          clearSession();
+          throw new Error('Session expired. Please log in again.');
+        }
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || `Request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        hidePaywall();
+        renderResults(data);
+        searchStatusEl.textContent = 'Recommendations loaded.';
+        await refreshCurrentUser();
+      } catch (error) {
+        console.error(error);
+        resultsSummaryEl.textContent = 'Error';
+        resultsContainerEl.innerHTML = '<div class="empty-state">Something went wrong while loading recommendations.</div>';
+        searchStatusEl.textContent = error.message || 'Backend request failed.';
+      } finally {
+        findButtonEl.disabled = false;
+      }
+    }
+
+    window.handleCopy = async function(interactionId, comment) {
+      try {
+        await copyToClipboard(comment);
+        await markCopied(interactionId);
+      } catch (error) {
+        console.error(error);
+        searchStatusEl.textContent = 'Could not copy comment.';
+      }
+    };
+
+    window.handleOpen = async function(interactionId) {
+      await markOpened(interactionId);
+    };
+
+    authModeLoginEl.addEventListener('click', () => {
+      authMode = 'login';
+      updateAuthModeUI();
+    });
+
+    authModeRegisterEl.addEventListener('click', () => {
+      authMode = 'register';
+      updateAuthModeUI();
+    });
+
+    authSubmitButtonEl.addEventListener('click', submitAuth);
+    forgotPasswordButtonEl.addEventListener('click', requestPasswordReset);
+    resetPasswordButtonEl.addEventListener('click', submitPasswordReset);
+
+    logoutButtonEl.addEventListener('click', () => {
+      clearSession();
+      authEmailEl.value = '';
+      authPasswordEl.value = '';
+      authMode = 'login';
+      updateAuthModeUI();
+      updateAuthUI();
+      authStatusEl.textContent = 'Logged out.';
+      searchStatusEl.textContent = '';
+      hidePaywall();
+      hideSuccessBanner();
+      hideResetBox();
+    });
+
+    upgradeButtonEl.addEventListener('click', upgradeUser);
+    findButtonEl.addEventListener('click', loadRecommendations);
+
+    window.addEventListener('load', async () => {
+      updateAuthModeUI();
+      updateAuthUI();
+      await refreshCurrentUser();
+
+      const params = new URLSearchParams(window.location.search);
+
+      if (params.get('payment') === 'success') {
+        await refreshCurrentUser();
+        const user = getStoredUser();
+
+        if (isPaidUser(user)) {
+          showSuccessBanner('Payment successful. Your account is now unlocked and ready to use.');
+          searchStatusEl.textContent = 'Payment successful. Full access is active.';
+          hidePaywall();
+        } else {
+          hideSuccessBanner();
+          searchStatusEl.textContent = 'Payment was received, but account activation is still being confirmed. Please refresh in a few seconds.';
+        }
+
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      if (params.get('payment') === 'cancelled') {
+        hideSuccessBanner();
+        searchStatusEl.textContent = 'Payment cancelled.';
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      if (params.get('reset_token')) {
+        resetInfoTextEl.textContent = 'Enter your new password to complete the reset.';
+        showResetBox(params.get('reset_token'));
+      }
+    });
+  </script>
+</body>
+</html>

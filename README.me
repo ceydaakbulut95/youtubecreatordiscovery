@@ -1,0 +1,59 @@
+# YouTube Creator Discovery Assistant
+
+Discover the right creators, write smarter comments with AI, and grow faster.
+
+## What this project does
+
+This app helps users:
+
+- find small YouTube creators in a chosen niche
+- filter videos by subscriber count, engagement, and comment count
+- generate AI-assisted comment suggestions
+- copy comments and open videos quickly
+- unlock full access after free usage is finished
+
+## Current product logic
+
+- users must register or log in to search
+- each user gets 5 free searches
+- after free usage ends, the user sees a one-time payment unlock
+- paid users should not see the unlock prompt again
+- auth is email/password based
+
+## Main features
+
+- email/password register and login
+- protected search endpoint
+- free usage tracking per user
+- AI comment suggestions
+- YouTube creator/video discovery from stored database results
+- Stripe checkout integration for one-time unlock
+- forgot password flow
+- bulk seed loading and ingestion pipeline
+- cron-ready ingestion structure
+
+## Tech stack
+
+### Backend
+- FastAPI
+- SQLAlchemy
+- SQLite
+- JWT auth
+- Stripe
+
+### Frontend
+- HTML
+- CSS
+- Vanilla JavaScript
+
+## Project structure
+
+```text
+youtubecommenter/
+├── app/
+├── frontend/
+│   ├── index.html
+│   └── logo.png
+├── scripts/
+├── .env
+└── youtube_commenter.db
