@@ -8,6 +8,8 @@ from app.services.ingestion_service import (
     run_ingestion_for_keyword,
     run_ingestion_from_seed,
 )
+from app.api.deps import get_current_admin
+from app.models.user import User
 
 router = APIRouter(prefix="/ingestion", tags=["Ingestion"])
 
@@ -42,6 +44,7 @@ class IngestionBulkRequest(BaseModel):
 def run_keyword_ingestion(
     request: IngestionKeywordRequest,
     db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
 ):
     if request.min_weeks_ago >= request.max_weeks_ago:
         raise HTTPException(
@@ -95,6 +98,7 @@ def run_seed_ingestion(
 def run_bulk_ingestion(
     request: IngestionBulkRequest,
     db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
 ):
     if request.min_weeks_ago >= request.max_weeks_ago:
         raise HTTPException(

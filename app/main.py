@@ -19,6 +19,7 @@ from app.api.routes_videos_db import router as videos_db_router
 from app.api.routes_ingestion import router as ingestion_router
 from app.api.routes_billing import router as billing_router
 from app.api.routes_password_reset import router as password_reset_router
+from app.api.routes_admin import router as admin_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -48,6 +49,7 @@ app.include_router(videos_db_router)
 app.include_router(ingestion_router)
 app.include_router(billing_router)
 app.include_router(password_reset_router)
+app.include_router(admin_router)
 
 
 @app.get("/")
