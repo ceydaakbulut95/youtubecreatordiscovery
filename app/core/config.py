@@ -31,6 +31,8 @@ class Settings:
     EMAIL_FROM: str = os.getenv("EMAIL_FROM", "")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500")
     
+    MIN_DB_VIDEO_COMMENT_COUNT: int = int(os.getenv("MIN_DB_VIDEO_COMMENT_COUNT", "10"))
+    
     ALLOWED_ORIGINS_RAW: str = os.getenv(
         "ALLOWED_ORIGINS",
         "http://127.0.0.1:5500,http://localhost:5500",
