@@ -849,11 +849,13 @@
       updateAuthUI();
     }
 
-    function isPaidUser(user) {
-      return !!user &&
-        (user.plan_type === 'paid' || user.plan_type === 'premium') &&
-        user.payment_status === 'paid';
-    }
+    function hasFullAccess(user) {
+      if (!user) return false;
+
+      const isAdmin = user.role === 'admin';
+      const isPaid = (user.plan_type === 'paid' || user.plan_type === 'premium') && user.payment_status === 'paid';
+      return isAdmin || isPaid;
+}
 
     function updateAuthModeUI() {
       const isLogin = authMode === 'login';
@@ -901,43 +903,49 @@
       resetStatusEl.textContent = '';
       resetPasswordInputEl.value = '';
     }
-
+ 
     function updateAuthUI() {
-      const user = getStoredUser();
+  const user = getStoredUser();
 
-      if (user) {
-        const paid = isPaidUser(user);
-        const remaining = Math.max(0, 5 - (user.free_search_count || 0));
+  if (user) {
+    const fullAccess = hasFullAccess(user);
+    const remaining = Math.max(0, 5 - (user.free_search_count || 0));
 
-        userChipEl.style.display = 'inline-flex';
-        logoutButtonEl.style.display = 'inline-flex';
-        authFormGridEl.classList.add('auth-form-hidden');
-        forgotPasswordButtonEl.style.display = 'none';
-        authModeLoginEl.style.display = 'none';
-        authModeRegisterEl.style.display = 'none';
+    userChipEl.style.display = 'inline-flex';
+    logoutButtonEl.style.display = 'inline-flex';
+    authFormGridEl.classList.add('auth-form-hidden');
+    forgotPasswordButtonEl.style.display = 'none';
+    authModeLoginEl.style.display = 'none';
+    authModeRegisterEl.style.display = 'none';
 
-        userChipEl.textContent = `${user.email} • ${paid ? 'paid' : user.plan_type}`;
-        authStatusEl.textContent = paid
-          ? 'Welcome back. Your paid access is active.'
-          : `Welcome back. You have ${remaining} free searches left.`;
+    const badge = user.role === 'admin' ? 'admin' : (fullAccess ? 'paid' : user.plan_type);
+    userChipEl.textContent = `${user.email} • ${badge}`;
 
-        searchStatusEl.textContent = paid
-          ? 'Paid access unlocked. Search as much as you want.'
-          : 'Your free searches are tracked on your account.';
+    authStatusEl.textContent = fullAccess
+      ? (user.role === 'admin'
+          ? 'Welcome back. Your admin access is active.'
+          : 'Welcome back. Your paid access is active.')
+      : `Welcome back. You have ${remaining} free searches left.`;
 
-        if (paid) {
-          hidePaywall();
-        }
-      } else {
-        userChipEl.style.display = 'none';
-        logoutButtonEl.style.display = 'none';
-        authFormGridEl.classList.remove('auth-form-hidden');
-        forgotPasswordButtonEl.style.display = 'inline-flex';
-        authModeLoginEl.style.display = 'inline-flex';
-        authModeRegisterEl.style.display = 'inline-flex';
-        searchStatusEl.textContent = 'You can explore the app first. Sign in when you are ready to run your first search.';
-      }
+    searchStatusEl.textContent = fullAccess
+      ? (user.role === 'admin'
+          ? 'Admin access unlocked. You can search without limits.'
+          : 'Paid access unlocked. Search as much as you want.')
+      : 'Your free searches are tracked on your account.';
+
+    if (fullAccess) {
+      hidePaywall();
     }
+  } else {
+    userChipEl.style.display = 'none';
+    logoutButtonEl.style.display = 'none';
+    authFormGridEl.classList.remove('auth-form-hidden');
+    forgotPasswordButtonEl.style.display = 'inline-flex';
+    authModeLoginEl.style.display = 'inline-flex';
+    authModeRegisterEl.style.display = 'inline-flex';
+    searchStatusEl.textContent = 'You can explore the app first. Sign in when you are ready to run your first search.';
+  }
+}
 
     function buildPayload() {
       return {
