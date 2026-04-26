@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     free_search_count: int
     is_active: bool
     created_at: datetime
+    role: str
 
     model_config = {
         "from_attributes": True

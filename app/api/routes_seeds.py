@@ -9,6 +9,8 @@ from app.schemas.search_seed import (
     SearchSeedCreate,
     SearchSeedResponse,
 )
+from app.api.deps import get_current_admin
+from app.models.user import User
 
 router = APIRouter(prefix="/seeds", tags=["Seeds"])
 

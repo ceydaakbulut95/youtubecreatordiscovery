@@ -7,7 +7,6 @@ from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
 from app.services.auth_service import get_user_by_email, hash_password
 
-
 RESET_TOKEN_EXPIRE_MINUTES = 30
 
 
@@ -15,6 +14,16 @@ def create_password_reset_token(db: Session, email: str) -> tuple[User | None, P
     user = get_user_by_email(db, email)
     if not user:
         return None, None
+
+    active_tokens = (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.user_id == user.id)
+        .filter(PasswordResetToken.is_used == False)
+        .all()
+    )
+
+    for token in active_tokens:
+        token.is_used = True
 
     token_value = secrets.token_urlsafe(32)
 
@@ -54,6 +63,16 @@ def reset_user_password(db: Session, token: str, new_password: str) -> bool:
 
     user.password_hash = hash_password(new_password)
     reset_token.is_used = True
+
+    other_tokens = (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.user_id == user.id)
+        .filter(PasswordResetToken.is_used == False)
+        .all()
+    )
+
+    for other in other_tokens:
+        other.is_used = True
 
     db.commit()
     return True

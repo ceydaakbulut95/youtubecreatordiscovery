@@ -26,6 +26,22 @@ class Settings:
     STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500")
     PAYMENT_PRICE_EUR: str = os.getenv("PAYMENT_PRICE_EUR", "4.99")
+    
+    SENDGRID_API_KEY: str = os.getenv("SENDGRID_API_KEY", "")
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500")
+    
+    MIN_DB_VIDEO_COMMENT_COUNT: int = int(os.getenv("MIN_DB_VIDEO_COMMENT_COUNT", "10"))
+    
+    ALLOWED_ORIGINS_RAW: str = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://127.0.0.1:5500,http://localhost:5500",
+    )
+
+    @property
+    def ALLOWED_ORIGINS(self) -> list[str]:
+        return [origin.strip() for origin in self.ALLOWED_ORIGINS_RAW.split(",") if origin.strip()]
+
 
 
 settings = Settings()
