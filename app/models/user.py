@@ -21,5 +21,10 @@ class User(Base):
     stripe_customer_id = Column(String, nullable=True)
     stripe_checkout_session_id = Column(String, nullable=True)
 
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    role = Column(String, default="user", nullable=False)  # user / admin

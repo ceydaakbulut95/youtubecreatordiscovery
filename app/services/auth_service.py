@@ -10,6 +10,9 @@ from app.models.user import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+MAX_FAILED_LOGIN_ATTEMPTS = 5
+LOGIN_LOCK_MINUTES = 10
+
 
 def normalize_email(email: str) -> str:
     return email.lower().strip()
@@ -48,3 +51,24 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     return db.query(User).filter(User.id == user_id).first()
+
+
+def is_user_locked(user: User) -> bool:
+    return user.locked_until is not None and user.locked_until > datetime.utcnow()
+
+
+def register_failed_login(db: Session, user: User) -> None:
+    user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+
+    if user.failed_login_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
+        user.locked_until = datetime.utcnow() + timedelta(minutes=LOGIN_LOCK_MINUTES)
+
+    db.commit()
+    db.refresh(user)
+
+
+def reset_login_failures(db: Session, user: User) -> None:
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    db.commit()
+    db.refresh(user)

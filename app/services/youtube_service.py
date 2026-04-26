@@ -1,72 +1,109 @@
-from datetime import datetime, timezone, timedelta
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
 
 from app.core.config import settings
-from app.schemas.filters import VideoSearchRequest
-from app.schemas.ingestion_search import IngestionSearchRequest
-from app.schemas.video import VideoCandidate
-from app.services.scoring_service import calculate_engagement_score
 
-YOUTUBE_BASE_URL = "https://www.googleapis.com/youtube/v3"
+YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
+YOUTUBE_VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos"
+YOUTUBE_CHANNELS_URL = "https://www.googleapis.com/youtube/v3/channels"
 
 
-def _chunk_list(items: list[str], size: int) -> list[list[str]]:
-    return [items[i:i + size] for i in range(0, len(items), size)]
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
-def _days_since(published_at: str) -> int:
-    dt = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+def _iso_z(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def build_published_window_between_weeks(min_weeks_ago: int = 2, max_weeks_ago: int = 4) -> tuple[str, str]:
+    """
+    Returns:
+      published_after, published_before
+
+    Example for 2-4 weeks window:
+    - published_after = now - 4 weeks
+    - published_before = now - 2 weeks
+    """
     now = datetime.now(timezone.utc)
-    return max((now - dt).days, 0)
 
-def _search_videos_paginated(
+    older_bound = now - timedelta(weeks=max_weeks_ago)
+    newer_bound = now - timedelta(weeks=min_weeks_ago)
+
+    return _iso_z(older_bound), _iso_z(newer_bound)
+
+
+def _days_since_upload(published_at: str | None) -> int:
+    if not published_at:
+        return 9999
+
+    try:
+        published_dt = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        return max(0, (now - published_dt).days)
+    except Exception:
+        return 9999
+
+
+def _compute_engagement_score(view_count: int, like_count: int, comment_count: int) -> float:
+    if view_count <= 0:
+        return 0.0
+    return round((like_count + comment_count) / view_count, 4)
+
+
+def _search_video_candidates(
     keyword: str,
-    pages: int = 5,
+    published_after: str | None = None,
+    published_before: str | None = None,
+    max_pages: int = 2,
     page_size: int = 25,
-    published_after_days: int | None = 180,
-    order: str = "date",
-    relevance_language: str | None = "en",
-    region_code: str | None = None,
+    relevance_language: str = "en",
 ) -> list[dict[str, Any]]:
+    if not settings.YOUTUBE_API_KEY:
+        raise ValueError("YOUTUBE_API_KEY is missing")
+
     results: list[dict[str, Any]] = []
     next_page_token: str | None = None
 
-    published_after = None
-    if published_after_days is not None:
-        dt = datetime.now(timezone.utc) - timedelta(days=published_after_days)
-        published_after = dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-    with httpx.Client(timeout=20.0) as client:
-        for _ in range(pages):
+    with httpx.Client(timeout=30.0) as client:
+        for _ in range(max_pages):
             params = {
                 "part": "snippet",
                 "q": keyword,
                 "type": "video",
                 "maxResults": page_size,
-                "order": order,
+                "order": "relevance",
+                "relevanceLanguage": relevance_language,
                 "key": settings.YOUTUBE_API_KEY,
             }
 
-            if next_page_token:
-                params["pageToken"] = next_page_token
             if published_after:
                 params["publishedAfter"] = published_after
-            if relevance_language:
-                params["relevanceLanguage"] = relevance_language
-            if region_code:
-                params["regionCode"] = region_code
 
-            response = client.get(f"{YOUTUBE_BASE_URL}/search", params=params)
+            if published_before:
+                params["publishedBefore"] = published_before
 
+            if next_page_token:
+                params["pageToken"] = next_page_token
+
+            response = client.get(YOUTUBE_SEARCH_URL, params=params)
             if response.status_code >= 400:
                 print("YOUTUBE SEARCH ERROR STATUS:", response.status_code)
                 print("YOUTUBE SEARCH ERROR BODY:", response.text)
-                return []
+            response.raise_for_status()
 
             data = response.json()
-            results.extend(data.get("items", []))
+            items = data.get("items", [])
+            results.extend(items)
 
             next_page_token = data.get("nextPageToken")
             if not next_page_token:
@@ -74,225 +111,167 @@ def _search_videos_paginated(
 
     return results
 
-def _get_channel_stats(channel_ids: list[str]) -> dict[str, dict[str, Any]]:
-    if not channel_ids:
-        return {}
 
-    result: dict[str, dict[str, Any]] = {}
-
-    with httpx.Client(timeout=20.0) as client:
-        for chunk in _chunk_list(channel_ids, 50):
-            params = {
-                "part": "snippet,statistics",
-                "id": ",".join(chunk),
-                "key": settings.YOUTUBE_API_KEY,
-            }
-
-            response = client.get(f"{YOUTUBE_BASE_URL}/channels", params=params)
-            response.raise_for_status()
-            data = response.json()
-
-            for item in data.get("items", []):
-                result[item["id"]] = item
-
-    return result
-
-
-def _get_video_stats(video_ids: list[str]) -> dict[str, dict[str, Any]]:
+def _fetch_video_details(video_ids: list[str]) -> dict[str, dict[str, Any]]:
     if not video_ids:
         return {}
 
-    result: dict[str, dict[str, Any]] = {}
+    details_by_id: dict[str, dict[str, Any]] = {}
 
-    with httpx.Client(timeout=20.0) as client:
-        for chunk in _chunk_list(video_ids, 50):
-            params = {
-                "part": "statistics",
-                "id": ",".join(chunk),
-                "key": settings.YOUTUBE_API_KEY,
-            }
+    with httpx.Client(timeout=30.0) as client:
+        for i in range(0, len(video_ids), 50):
+            batch = video_ids[i:i + 50]
 
-            response = client.get(f"{YOUTUBE_BASE_URL}/videos", params=params)
-            response.raise_for_status()
-            data = response.json()
-
-            for item in data.get("items", []):
-                result[item["id"]] = item
-
-    return result
-
-
-def _get_comment_threads(video_id: str, max_results: int = 10) -> list[dict[str, Any]]:
-    params = {
-        "part": "snippet,replies",
-        "videoId": video_id,
-        "maxResults": max_results,
-        "order": "relevance",
-        "textFormat": "plainText",
-        "key": settings.YOUTUBE_API_KEY,
-    }
-
-    try:
-        with httpx.Client(timeout=20.0) as client:
-            response = client.get(f"{YOUTUBE_BASE_URL}/commentThreads", params=params)
-
+            response = client.get(
+                YOUTUBE_VIDEOS_URL,
+                params={
+                    "part": "snippet,statistics",
+                    "id": ",".join(batch),
+                    "maxResults": 50,
+                    "key": settings.YOUTUBE_API_KEY,
+                },
+            )
             if response.status_code >= 400:
-                print("YOUTUBE SEARCH ERROR STATUS:", response.status_code)
-                print("YOUTUBE SEARCH ERROR BODY:", response.text)
-  
+                print("YOUTUBE VIDEOS ERROR STATUS:", response.status_code)
+                print("YOUTUBE VIDEOS ERROR BODY:", response.text)
             response.raise_for_status()
+
             data = response.json()
+            for item in data.get("items", []):
+                details_by_id[item["id"]] = item
 
-        return data.get("items", [])
-
-    except httpx.HTTPError as e:
-        print(f"Comment fetch failed for video {video_id}: {e}")
-        return []
+    return details_by_id
 
 
-def _estimate_creator_reply_ratio(
-    comment_threads: list[dict[str, Any]],
-    channel_id: str
-) -> tuple[float, int]:
-    if not comment_threads:
-        return 0.0, 0
+def _fetch_channel_details(channel_ids: list[str]) -> dict[str, dict[str, Any]]:
+    if not channel_ids:
+        return {}
 
-    total_threads = len(comment_threads)
-    creator_replied_threads = 0
+    unique_ids = list(dict.fromkeys(channel_ids))
+    details_by_id: dict[str, dict[str, Any]] = {}
 
-    for thread in comment_threads:
-        replies = thread.get("replies", {}).get("comments", [])
-        creator_replied = False
+    with httpx.Client(timeout=30.0) as client:
+        for i in range(0, len(unique_ids), 50):
+            batch = unique_ids[i:i + 50]
 
-        for reply in replies:
-            author_channel = (
-                reply.get("snippet", {})
-                .get("authorChannelId", {})
-                .get("value")
+            response = client.get(
+                YOUTUBE_CHANNELS_URL,
+                params={
+                    "part": "snippet,statistics",
+                    "id": ",".join(batch),
+                    "maxResults": 50,
+                    "key": settings.YOUTUBE_API_KEY,
+                },
             )
-            if author_channel == channel_id:
-                creator_replied = True
-                break
+            if response.status_code >= 400:
+                print("YOUTUBE CHANNELS ERROR STATUS:", response.status_code)
+                print("YOUTUBE CHANNELS ERROR BODY:", response.text)
+            response.raise_for_status()
 
-        if creator_replied:
-            creator_replied_threads += 1
+            data = response.json()
+            for item in data.get("items", []):
+                details_by_id[item["id"]] = item
 
-    ratio = creator_replied_threads / total_threads if total_threads else 0.0
-    return round(ratio, 2), total_threads
+    return details_by_id
 
 
-def search_videos(request: IngestionSearchRequest) -> list[VideoCandidate]:
-    if not settings.YOUTUBE_API_KEY:
-        raise ValueError("YOUTUBE_API_KEY is missing")
+def search_videos_for_ingestion(
+    keyword: str,
+    niche: str,
+    published_after: str | None = None,
+    published_before: str | None = None,
+    max_pages: int = 2,
+    page_size: int = 25,
+) -> list[dict[str, Any]]:
+    """
+    Fetches candidate videos for DB ingestion.
 
-    raw_videos = _search_videos_paginated(
-      keyword=request.keyword,
-      pages=min(request.search_pages, 2),
-      page_size=10,
-      published_after_days=request.published_after_days,
-      order="date",
-      relevance_language="en",
-      region_code=None,
-)
+    Rules:
+    - only videos between published_after and published_before
+    - only videos with comment_count >= settings.MIN_DB_VIDEO_COMMENT_COUNT
+    """
 
-    channel_ids = list({
-        item["snippet"]["channelId"]
-        for item in raw_videos
-        if "snippet" in item and "channelId" in item["snippet"]
-    })
+    raw_candidates = _search_video_candidates(
+        keyword=keyword,
+        published_after=published_after,
+        published_before=published_before,
+        max_pages=max_pages,
+        page_size=page_size,
+    )
 
-    video_ids = list({
-        item.get("id", {}).get("videoId")
-        for item in raw_videos
-        if item.get("id", {}).get("videoId")
-    })
-
-    channels_map = _get_channel_stats(channel_ids)
-    videos_map = _get_video_stats(video_ids)
-
-    results: list[VideoCandidate] = []
-    seen_channels: set[str] = set()
-
-    for item in raw_videos:
-        snippet = item.get("snippet", {})
+    video_ids: list[str] = []
+    for item in raw_candidates:
         video_id = item.get("id", {}).get("videoId")
+        if video_id:
+            video_ids.append(video_id)
+
+    video_details_by_id = _fetch_video_details(video_ids)
+
+    channel_ids: list[str] = []
+    for video in video_details_by_id.values():
+        snippet = video.get("snippet", {})
         channel_id = snippet.get("channelId")
+        if channel_id:
+            channel_ids.append(channel_id)
 
-        if not video_id or not channel_id:
+    channel_details_by_id = _fetch_channel_details(channel_ids)
+
+    final_results: list[dict[str, Any]] = []
+
+    for raw_item in raw_candidates:
+        video_id = raw_item.get("id", {}).get("videoId")
+        if not video_id:
             continue
 
-        title = snippet.get("title") or ""
-        description = snippet.get("description") or ""
-        channel_name = snippet.get("channelTitle") or ""
+        full_video = video_details_by_id.get(video_id)
+        if not full_video:
+            continue
+
+        snippet = full_video.get("snippet", {})
+        statistics = full_video.get("statistics", {})
+
+        comment_count = _safe_int(statistics.get("commentCount"))
+
+        # Core rule: do not ingest low-signal videos
+        if comment_count < settings.MIN_DB_VIDEO_COMMENT_COUNT:
+            continue
+
+        view_count = _safe_int(statistics.get("viewCount"))
+        like_count = _safe_int(statistics.get("likeCount"))
+
+        channel_id = snippet.get("channelId", "")
+        channel = channel_details_by_id.get(channel_id, {})
+        channel_stats = channel.get("statistics", {})
+
+        subscriber_count = _safe_int(channel_stats.get("subscriberCount"))
         published_at = snippet.get("publishedAt")
+        days_since_upload = _days_since_upload(published_at)
 
-        if channel_id in seen_channels:
-            continue
-
-        if "#shorts" in title.lower():
-            continue
-
-        if not description.strip():
-            continue
-
-        channel_data = channels_map.get(channel_id, {})
-        channel_statistics = channel_data.get("statistics", {})
-        subscriber_count = int(channel_statistics.get("subscriberCount", 0))
-
-        if not (request.subscriber_min <= subscriber_count <= request.subscriber_max):
-            continue
-
-        video_data = videos_map.get(video_id, {})
-        video_statistics = video_data.get("statistics", {})
-        video_comment_count = int(video_statistics.get("commentCount", 0))
-
-        if video_comment_count < request.min_video_comment_count:
-            continue
-
-        days_since_upload = _days_since(published_at) if published_at else 9999
-
-        if days_since_upload > request.published_after_days:
-            continue
-
-        comment_threads = _get_comment_threads(video_id, max_results=10)
-        creator_reply_ratio, sampled_comment_count = _estimate_creator_reply_ratio(
-            comment_threads=comment_threads,
-            channel_id=channel_id,
+        engagement_score = _compute_engagement_score(
+            view_count=view_count,
+            like_count=like_count,
+            comment_count=comment_count,
         )
 
-        if request.only_active_creators:
-            if sampled_comment_count == 0:
-                continue
-            if creator_reply_ratio < 0.05:
-                continue
-
-        engagement_score = calculate_engagement_score(
-            reply_ratio=creator_reply_ratio,
-            comment_count=max(video_comment_count, sampled_comment_count),
-            days_since_upload=days_since_upload,
+        final_results.append(
+            {
+                "youtube_video_id": video_id,
+                "title": snippet.get("title", ""),
+                "description": snippet.get("description", ""),
+                "video_url": f"https://www.youtube.com/watch?v={video_id}",
+                "youtube_channel_id": channel_id,
+                "channel_name": snippet.get("channelTitle", ""),
+                "subscriber_count": subscriber_count,
+                "comment_count": comment_count,
+                "view_count": view_count,
+                "like_count": like_count,
+                "engagement_score": engagement_score,
+                "creator_reply_ratio": 0.0,
+                "days_since_upload": days_since_upload,
+                "published_at": published_at,
+                "niche": niche,
+                "keyword": keyword,
+            }
         )
 
-        if engagement_score < request.min_engagement_score:
-            continue
-
-        results.append(
-            VideoCandidate(
-                video_id=video_id,
-                title=title,
-                description=description,
-                video_url=f"https://www.youtube.com/watch?v={video_id}",
-                channel_id=channel_id,
-                channel_name=channel_name,
-                subscriber_count=subscriber_count,
-                creator_reply_ratio=creator_reply_ratio,
-                engagement_score=engagement_score,
-                comment_count=video_comment_count,
-                days_since_upload=days_since_upload,
-                niche=request.niche,
-            )
-        )
-
-        seen_channels.add(channel_id)
-
-    results.sort(key=lambda x: x.engagement_score, reverse=True)
-    return results[: request.max_results]
+    return final_results

@@ -1,233 +1,154 @@
-from datetime import datetime
-from sqlalchemy import asc
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 
 from app.models.search_seed import SearchSeed
 from app.models.video import Video
-from app.schemas.ingestion import (
-    DailyIngestionResponse,
-    IngestionRunRequest,
-    IngestionRunResponse,
+from app.services.youtube_service import (
+    build_published_window_between_weeks,
+    search_videos_for_ingestion,
 )
-from app.schemas.ingestion_search import IngestionSearchRequest
-from app.services.youtube_service import search_videos
 
 
-SUPPORTED_NICHES = ["food", "fitness", "beauty", "coding", "travel"]
-
-
-def get_usable_video_count(db: Session, niche: str) -> int:
+def _video_exists(db: Session, youtube_video_id: str) -> bool:
     return (
         db.query(Video)
-        .filter(Video.niche == niche)
-        .filter(Video.is_short == False)
-        .filter(Video.has_description == True)
-        .count()
-    )
-
-
-def _select_seeds(db: Session, niche: str, max_seeds: int, only_active_seeds: bool = True) -> list[SearchSeed]:
-    query = db.query(SearchSeed).filter(SearchSeed.niche == niche)
-
-    if only_active_seeds:
-        query = query.filter(SearchSeed.is_active == True)
-
-    seeds = (
-        query.order_by(
-            SearchSeed.last_fetched_at.isnot(None),
-            asc(SearchSeed.last_fetched_at),
-            asc(SearchSeed.id),
-        )
-        .limit(max_seeds)
-        .all()
-    )
-
-    return seeds
-
-
-def _upsert_video(db: Session, video) -> tuple[bool, bool]:
-    existing = (
-        db.query(Video)
-        .filter(Video.youtube_video_id == video.video_id)
+        .filter(Video.youtube_video_id == youtube_video_id)
         .first()
-    )
-
-    if existing:
-        existing.youtube_channel_id = video.channel_id
-        existing.channel_name = video.channel_name
-        existing.subscriber_count = video.subscriber_count
-        existing.title = video.title
-        existing.description = video.description
-        existing.video_url = video.video_url
-        existing.niche = video.niche
-        existing.comment_count = video.comment_count
-        existing.creator_reply_ratio = video.creator_reply_ratio
-        existing.engagement_score = video.engagement_score
-        existing.days_since_upload = video.days_since_upload
-        existing.is_short = "#shorts" in video.title.lower()
-        existing.has_description = bool(video.description.strip())
-        existing.last_fetched_at = datetime.utcnow()
-        return False, True
-
-    db_video = Video(
-        youtube_video_id=video.video_id,
-        youtube_channel_id=video.channel_id,
-        channel_name=video.channel_name,
-        subscriber_count=video.subscriber_count,
-        title=video.title,
-        description=video.description,
-        video_url=video.video_url,
-        niche=video.niche,
-        published_at=None,
-        days_since_upload=video.days_since_upload,
-        comment_count=video.comment_count,
-        creator_reply_ratio=video.creator_reply_ratio,
-        engagement_score=video.engagement_score,
-        is_short="#shorts" in video.title.lower(),
-        has_description=bool(video.description.strip()),
-        last_fetched_at=datetime.utcnow(),
-    )
-    db.add(db_video)
-    return True, False
-
-
-def run_ingestion(request: IngestionRunRequest, db: Session) -> IngestionRunResponse:
-    if not request.niche:
-        raise ValueError("niche is required for run_ingestion")
-
-    seeds = _select_seeds(
-        db=db,
-        niche=request.niche,
-        max_seeds=request.max_seeds,
-        only_active_seeds=request.only_active_seeds,
-    )
-
-    total_videos_found = 0
-    total_inserted = 0
-    total_updated = 0
-
-    for seed in seeds:
-        search_request = IngestionSearchRequest(
-            keyword=seed.keyword,
-            niche=seed.niche,
-            subscriber_min=0,
-            subscriber_max=1_000_000_000,
-            only_active_creators=False,
-            min_engagement_score=0.0,
-            min_video_comment_count=0,
-            published_after_days=90,
-            search_pages=1,
-            max_results=20,
-        )
-
-        videos = search_videos(search_request)
-        total_videos_found += len(videos)
-
-        for video in videos:
-            inserted, updated = _upsert_video(db, video)
-            if inserted:
-                total_inserted += 1
-            if updated:
-                total_updated += 1
-
-        seed.last_fetched_at = datetime.utcnow()
-        db.commit()
-
-    return IngestionRunResponse(
-        total_seeds_processed=len(seeds),
-        total_videos_found=total_videos_found,
-        total_inserted=total_inserted,
-        total_updated=total_updated,
+        is not None
     )
 
 
-def run_daily_inventory_fill(
+def run_ingestion_for_keyword(
     db: Session,
-    target_per_niche: int = 250,
-    published_after_days: int = 90,
-    max_seeds_per_run: int = 10,
-) -> DailyIngestionResponse:
-    results: list[dict] = []
+    keyword: str,
+    niche: str,
+    min_weeks_ago: int = 2,
+    max_weeks_ago: int = 4,
+    max_pages: int = 2,
+    page_size: int = 25,
+) -> dict:
+    published_after, published_before = build_published_window_between_weeks(
+        min_weeks_ago=min_weeks_ago,
+        max_weeks_ago=max_weeks_ago,
+    )
 
-    for niche in SUPPORTED_NICHES:
-        before_count = get_usable_video_count(db, niche)
-        needed = max(target_per_niche - before_count, 0)
+    candidates = search_videos_for_ingestion(
+        keyword=keyword,
+        niche=niche,
+        published_after=published_after,
+        published_before=published_before,
+        max_pages=max_pages,
+        page_size=page_size,
+    )
 
-        if needed <= 0:
-            results.append(
-                {
-                    "niche": niche,
-                    "before_count": before_count,
-                    "after_count": before_count,
-                    "needed": 0,
-                    "seeds_processed": 0,
-                    "inserted": 0,
-                    "updated": 0,
-                    "status": "already_full",
-                }
-            )
+    inserted_count = 0
+    skipped_duplicates = 0
+
+    for item in candidates:
+        youtube_video_id = item["youtube_video_id"]
+
+        if _video_exists(db, youtube_video_id):
+            skipped_duplicates += 1
             continue
 
-        seeds = _select_seeds(
-            db=db,
-            niche=niche,
-            max_seeds=max_seeds_per_run,
-            only_active_seeds=True,
+        video = Video(
+            youtube_video_id=item["youtube_video_id"],
+            title=item["title"],
+            description=item["description"],
+            video_url=item["video_url"],
+            youtube_channel_id=item["youtube_channel_id"],
+            channel_name=item["channel_name"],
+            subscriber_count=item["subscriber_count"],
+            creator_reply_ratio=item.get("creator_reply_ratio", 0.0),
+            engagement_score=item.get("engagement_score", 0.0),
+            comment_count=item.get("comment_count", 0),
+            days_since_upload=item.get("days_since_upload", 9999),
+            niche=item["niche"],
         )
 
-        total_inserted = 0
-        total_updated = 0
-        total_videos_found = 0
+        db.add(video)
+        inserted_count += 1
 
-        for seed in seeds:
-            search_request = IngestionSearchRequest(
-                keyword=seed.keyword,
-                niche=seed.niche,
-                subscriber_min=0,
-                subscriber_max=1_000_000_000,
-                only_active_creators=False,
-                min_engagement_score=0.0,
-                min_video_comment_count=0,
-                published_after_days=published_after_days,
-                search_pages=1,
-                max_results=20,
-            )
+    db.commit()
 
-            videos = search_videos(search_request)
-            total_videos_found += len(videos)
+    return {
+        "keyword": keyword,
+        "niche": niche,
+        "window_weeks": f"{min_weeks_ago}-{max_weeks_ago}",
+        "inserted_count": inserted_count,
+        "skipped_duplicates": skipped_duplicates,
+        "total_candidates_after_filters": len(candidates),
+    }
 
-            for video in videos:
-                inserted, updated = _upsert_video(db, video)
-                if inserted:
-                    total_inserted += 1
-                if updated:
-                    total_updated += 1
 
-            seed.last_fetched_at = datetime.utcnow()
-            db.commit()
+def run_ingestion_from_seed(
+    db: Session,
+    seed_id: int,
+    min_weeks_ago: int = 2,
+    max_weeks_ago: int = 4,
+    max_pages: int = 2,
+    page_size: int = 25,
+) -> dict:
+    seed = db.query(SearchSeed).filter(SearchSeed.id == seed_id).first()
+    if not seed:
+        raise ValueError(f"Seed not found: {seed_id}")
 
-            current_count = get_usable_video_count(db, niche)
-            if current_count >= target_per_niche:
-                break
-
-        after_count = get_usable_video_count(db, niche)
-
-        results.append(
-            {
-                "niche": niche,
-                "before_count": before_count,
-                "after_count": after_count,
-                "needed": needed,
-                "videos_found": total_videos_found,
-                "seeds_processed": len(seeds),
-                "inserted": total_inserted,
-                "updated": total_updated,
-                "status": "filled" if after_count >= target_per_niche else "partial",
-            }
-        )
-
-    return DailyIngestionResponse(
-        target_per_niche=target_per_niche,
-        published_after_days=published_after_days,
-        results=results,
+    return run_ingestion_for_keyword(
+        db=db,
+        keyword=seed.keyword,
+        niche=seed.niche,
+        min_weeks_ago=min_weeks_ago,
+        max_weeks_ago=max_weeks_ago,
+        max_pages=max_pages,
+        page_size=page_size,
     )
+
+
+def run_bulk_ingestion_from_active_seeds(
+    db: Session,
+    niche: str | None = None,
+    max_seeds: int | None = None,
+    min_weeks_ago: int = 2,
+    max_weeks_ago: int = 4,
+    max_pages: int = 2,
+    page_size: int = 25,
+) -> dict:
+    query = db.query(SearchSeed).filter(SearchSeed.is_active == True)
+
+    if niche:
+        query = query.filter(SearchSeed.niche == niche)
+
+    query = query.order_by(SearchSeed.id.asc())
+
+    if max_seeds:
+        seeds = query.limit(max_seeds).all()
+    else:
+        seeds = query.all()
+
+    results = []
+    total_inserted = 0
+    total_skipped_duplicates = 0
+
+    for seed in seeds:
+        result = run_ingestion_for_keyword(
+            db=db,
+            keyword=seed.keyword,
+            niche=seed.niche,
+            min_weeks_ago=min_weeks_ago,
+            max_weeks_ago=max_weeks_ago,
+            max_pages=max_pages,
+            page_size=page_size,
+        )
+        results.append(result)
+        total_inserted += result["inserted_count"]
+        total_skipped_duplicates += result["skipped_duplicates"]
+
+    return {
+        "seed_count": len(seeds),
+        "niche": niche,
+        "window_weeks": f"{min_weeks_ago}-{max_weeks_ago}",
+        "total_inserted": total_inserted,
+        "total_skipped_duplicates": total_skipped_duplicates,
+        "results": results,
+    }

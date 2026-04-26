@@ -7,13 +7,17 @@ from app.schemas.filters import VideoSearchRequest
 from app.schemas.response import RecommendationResponse
 from app.services.recommendation_service import build_recommendations
 
+from fastapi import APIRouter, Depends, Request
+from app.core.limiter import limiter
+
 router = APIRouter(prefix="/search", tags=["Search"])
 
-
 @router.post("/recommendations", response_model=RecommendationResponse)
+@limiter.limit("30/minute")
 def search_recommendations(
-    request: VideoSearchRequest,
+    request: Request,
+    payload: VideoSearchRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return build_recommendations(request, db, current_user)
+    return build_recommendations(payload, db, current_user)
