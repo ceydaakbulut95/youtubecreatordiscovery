@@ -10,74 +10,54 @@ from app.core.config import settings
 SYSTEM_PROMPT = """
 You write natural YouTube comments that feel like they were written by a real viewer.
 
-Main goals:
-- Sound warm, believable, and human
-- Feel clearly connected to the actual video
-- Leave a memorable impression on the creator
-- Indirectly increase the chance that the creator notices the commenter
-- Make the creator feel seen, appreciated, and a little curious
-
 Rules:
-- Write exactly 3 comment options
-- Each comment should feel like it came from someone who actually watched the video
-- Use specific details from the title or description.
-- Make comments feel personal and specific to this video, not generic enough to be used on any video.
-- Use a few emojis if it fits the vibe, but don't overdo it.
-- Mention a real topic, step, theme, moment, angle, or style from the video
-- Avoid generic praise unless combined with something specific
-- Comments should be supportive, natural, and slightly personal
-- Keep comments between 8 and 28 words
-- No bullet points
-- No dashes
-- No numbering
-- No quotation marks
-- No hashtags
-- Use 0 or 1 emoji per comment
-- Not every comment should include an emoji
-- Do not self-promote
-- Do not ask for follow back, subscribe back, support back, or channel check
-- Avoid robotic phrases and generic phrases like:
-  great content
-  valuable content
-  amazing video
+- Return exactly 3 comments
+- Each comment must be on its own line
+- Do not add any intro sentence
+- Do not write labels like Comment 1, Comment 2, or Comment 3
+- Do not use bullet points
+- Do not use numbering
+- Do not use quotation marks
+- Do not use hashtags
+- Use 0 or 1 emoji maximum per comment
+- Keep each comment between 8 and 28 words
+- Make comments sound warm, believable, and human
+- Make comments clearly connected to the specific video
+- Use real details from the title or description when possible
+- Avoid generic phrases like:
   nice video
+  great content
   very helpful
   thanks for sharing
   keep it up
-- Make the 3 comments clearly different from each other
+- Do not ask for follow back, support back, subscribe back, or channel check
 """
 
 
 RULE_BASED_COMMENTS = [
-    "The way you structured this made it feel much easier to follow than I expected",
-    "I liked how specific this felt instead of dragging everything out for no reason",
-    "This was such a solid first video to land on from your channel honestly",
-    "You have a way of explaining things that makes people want to stay a little longer",
-    "This felt much more intentional than most videos I come across in this niche",
-    "I clicked for the topic but the pacing is what made me keep watching 👀",
-    "There’s something really watchable about the way you put these videos together",
-    "This made the whole topic feel more approachable without watering it down",
-    "The clarity in this really stands out fast, especially in this niche",
+    "The way you explained this made it feel much easier to follow than I expected",
+    "I liked how clear and watchable this felt from the beginning to the end",
+    "This felt a lot more thoughtful than most videos I come across in this niche",
+    "You have a really natural way of making the topic feel easy to stay with",
+    "I clicked for the idea and stayed because the pacing was actually really good 👀",
+    "This felt specific in a good way and not just thrown together for views",
+    "There is something really easy to connect with in the way you present things",
+    "This made the topic feel much more approachable without watering it down",
 ]
 
 
 BANNED_PATTERNS = [
+    r"\bnice video\b",
     r"\bgreat content\b",
-    r"\bvaluable content\b",
+    r"\bvery helpful\b",
     r"\bthanks for sharing\b",
     r"\bkeep it up\b",
-    r"\bamazing video\b",
-    r"\bnice video\b",
-    r"\bvery helpful\b",
-    r"\bsupport me too\b",
-    r"\bsub back\b",
     r"\bsubscribe back\b",
+    r"\bsub back\b",
+    r"\bfollow me\b",
     r"\bcheck my channel\b",
     r"\bcheck out my channel\b",
     r"\bcheck out my page\b",
-    r"\bvisit my channel\b",
-    r"\bvisit my page\b",
-    r"\bfollow me\b",
 ]
 
 
@@ -86,19 +66,17 @@ INTRO_PATTERNS = [
     r"^here's\b",
     r"^below are\b",
     r"^these are\b",
-    r"^three natural youtube comments\b",
-    r"^youtube comments for\b",
+    r"^youtube comments\b",
+    r"^three natural\b",
+    r"^three short\b",
 ]
 
 
-GENERIC_PATTERNS = [
-    r"\bnice video\b",
-    r"\bgreat video\b",
-    r"\bgreat content\b",
-    r"\bvery helpful\b",
-    r"\bloved this\b$",
-    r"\bthis was helpful\b$",
-]
+def shorten_text(value: str, limit: int = 500) -> str:
+    if not value:
+        return ""
+    value = re.sub(r"\s+", " ", value).strip()
+    return value[:limit]
 
 
 def clean_comment_line(text: str) -> str:
@@ -106,10 +84,9 @@ def clean_comment_line(text: str) -> str:
 
     value = re.sub(r"^\s*[-*•]+\s*", "", value)
     value = re.sub(r"^\s*\d+[.)]\s*", "", value)
-    value = re.sub(r"^\s*[A-Za-z][.)]\s*", "", value)
+    value = re.sub(r"^\s*comment\s*\d+\s*[:.-]?\s*", "", value, flags=re.IGNORECASE)
 
     value = value.replace('"', "")
-    value = value.replace("'", "")
     value = value.replace("“", "")
     value = value.replace("”", "")
     value = value.replace("‘", "")
@@ -119,30 +96,15 @@ def clean_comment_line(text: str) -> str:
 
     lowered = value.lower()
     for pattern in INTRO_PATTERNS:
-      if re.search(pattern, lowered):
-          return ""
+        if re.search(pattern, lowered):
+            return ""
 
     return value
 
 
 def looks_spammy(text: str) -> bool:
     lowered = text.lower().strip()
-
-    for pattern in BANNED_PATTERNS:
-        if re.search(pattern, lowered):
-            return True
-
-    return False
-
-
-def looks_too_generic(text: str) -> bool:
-    lowered = text.lower().strip()
-
-    for pattern in GENERIC_PATTERNS:
-        if re.search(pattern, lowered):
-            return True
-
-    return False
+    return any(re.search(pattern, lowered) for pattern in BANNED_PATTERNS)
 
 
 def is_reasonable_length(text: str) -> bool:
@@ -154,16 +116,13 @@ def normalize_comments(raw_comments: List[str]) -> List[str]:
     cleaned: List[str] = []
     seen = set()
 
-    for comment in raw_comments:
-        value = clean_comment_line(comment)
+    for item in raw_comments:
+        value = clean_comment_line(item)
 
         if not value:
             continue
 
         if looks_spammy(value):
-            continue
-
-        if looks_too_generic(value):
             continue
 
         if not is_reasonable_length(value):
@@ -179,67 +138,68 @@ def normalize_comments(raw_comments: List[str]) -> List[str]:
     return cleaned[:3]
 
 
+def split_possible_comments(text: str) -> List[str]:
+    if not text:
+        return []
+
+    text = text.strip()
+
+    numbered_chunks = re.split(r"(?:^|\n)\s*(?:comment\s*\d+\s*:|\d+[.)]\s+)", text, flags=re.IGNORECASE)
+    numbered_chunks = [chunk.strip() for chunk in numbered_chunks if chunk.strip()]
+    if len(numbered_chunks) >= 3:
+        return numbered_chunks
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(lines) >= 3:
+        return lines
+
+    sentence_chunks = re.split(r"(?<=[.!?])\s+(?=[A-Z])", text)
+    sentence_chunks = [chunk.strip() for chunk in sentence_chunks if chunk.strip()]
+    return sentence_chunks
+
+
 def extract_comments_from_text(text: str) -> List[str]:
     if not text:
         return []
 
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if not lines:
-        return []
+    chunks = split_possible_comments(text)
+    comments = normalize_comments(chunks)
 
-    filtered_lines = []
-    for line in lines:
-        cleaned = clean_comment_line(line)
-        if not cleaned:
-            continue
-        filtered_lines.append(cleaned)
-
-    comments = normalize_comments(filtered_lines)
     if len(comments) >= 3:
         return comments[:3]
 
-    sentence_chunks = re.split(r"\n+|(?<=[.!?])\s+(?=[A-Z])", text)
-    filtered_chunks = []
+    lines = [clean_comment_line(line) for line in text.splitlines() if line.strip()]
+    lines = [line for line in lines if line]
+    comments = normalize_comments(lines)
 
-    for chunk in sentence_chunks:
-        cleaned = clean_comment_line(chunk)
-        if not cleaned:
-            continue
-        filtered_chunks.append(cleaned)
+    if len(comments) >= 3:
+        return comments[:3]
 
-    sentence_comments = normalize_comments(filtered_chunks)
-    return sentence_comments[:3]
-
-
-def shorten_description(description: str, max_len: int = 500) -> str:
-    if not description:
-        return ""
-    clean = re.sub(r"\s+", " ", description).strip()
-    return clean[:max_len]
+    return comments[:3]
 
 
 def build_comment_prompt(video) -> str:
-    title = (video.title or "").strip()
-    description = shorten_description(video.description or "")
-    niche = (video.niche or "").strip()
+    title = shorten_text(getattr(video, "title", "") or "", 200)
+    description = shorten_text(getattr(video, "description", "") or "", 600)
+    niche = (getattr(video, "niche", "") or "").strip()
+    channel_name = (getattr(video, "channel_name", "") or "").strip()
 
     return f"""
 Video title: {title}
 Video description: {description}
-Channel name: {video.channel_name}
+Channel name: {channel_name}
 Niche: {niche}
 
-Write 3 natural YouTube comments for this video.
+Write exactly 3 natural YouTube comments for this specific video.
 
 Important:
-- Make each comment specific to this video
-- Use real cues from the title or description
-- Mention a concrete detail, topic, step, theme, or style when possible
-- Do not sound generic
-- Do not write a heading or intro sentence
-- Do not say "here are 3 comments"
-- Never directly ask for anything in return
-- Make the comments feel like they came from a real viewer
+- Each comment must be on its own line
+- No intro line
+- No labels
+- No numbering
+- Make the comments specific to this video
+- Mention a concrete topic, detail, step, mood, or angle from the title or description when possible
+- Sound human and natural
 """
 
 
@@ -253,15 +213,13 @@ def generate_with_ollama(video) -> List[str]:
         "stream": False,
     }
 
-    chat_urls = [
+    urls = [
         f"{settings.OLLAMA_BASE_URL}/api/chat",
         f"{settings.OLLAMA_BASE_URL}/v1/chat/completions",
     ]
 
-    last_error = None
-
-    with httpx.Client(timeout=30.0) as client:
-        for url in chat_urls:
+    with httpx.Client(timeout=90.0) as client:
+        for url in urls:
             try:
                 response = client.post(url, json=payload)
                 response.raise_for_status()
@@ -269,79 +227,67 @@ def generate_with_ollama(video) -> List[str]:
 
                 text = ""
 
-                if "message" in data and isinstance(data["message"], dict):
+                if isinstance(data.get("message"), dict):
                     text = data["message"].get("content", "") or ""
-                elif "choices" in data and data["choices"]:
+                elif data.get("choices"):
                     choice = data["choices"][0]
-                    if "message" in choice and isinstance(choice["message"], dict):
+                    if isinstance(choice.get("message"), dict):
                         text = choice["message"].get("content", "") or ""
 
                 comments = extract_comments_from_text(text)
                 if comments:
                     return comments
-
             except Exception as exc:
-                last_error = exc
+                print(f"Ollama call failed for {url}: {exc}")
                 continue
-
-    if last_error:
-        print(f"Ollama generation failed: {last_error}")
 
     return []
 
 
 def generate_rule_based_comments(video) -> List[str]:
-    title = (video.title or "").lower()
-    description = (video.description or "").lower()
-    niche = (video.niche or "").lower()
+    title = ((getattr(video, "title", "") or "") + " " + (getattr(video, "description", "") or "")).lower()
+    niche = (getattr(video, "niche", "") or "").lower()
 
-    specific = []
+    specific: List[str] = []
 
-    if "meal prep" in title or "meal prep" in description:
+    if "pasta" in title:
         specific.extend([
-            "The way you broke the meal prep into manageable steps made it feel much less overwhelming",
-            "I liked that this meal prep felt realistic instead of trying to make everything look perfect",
-        ])
-
-    if "fastapi" in title or "fastapi" in description:
-        specific.extend([
-            "The way you walked through the FastAPI setup made the whole thing feel much easier to follow",
-            "I liked that you made the FastAPI part feel practical instead of overexplaining every detail",
-        ])
-
-    if "python" in title or "python" in description:
-        specific.extend([
-            "This made the Python side feel much more approachable than most videos I run into",
-            "I liked that the Python explanation stayed clear without slowing everything down too much",
-        ])
-
-    if "travel" in niche or "vlog" in title or "vlog" in description:
-        specific.extend([
-            "The way you put this vlog together made the whole thing feel really easy to stay with",
-            "I liked that this travel video felt immersive without trying too hard to force the vibe 🌍",
-        ])
-
-    if "makeup" in title or "skincare" in title or niche == "beauty":
-        specific.extend([
-            "I liked how you kept this look approachable instead of making it feel impossible to recreate",
-            "The way you explained each part of this routine made it feel much more wearable and realistic",
-        ])
-
-    if "workout" in title or niche == "fitness":
-        specific.extend([
-            "I liked that this workout felt realistic enough to actually come back to more than once",
-            "The way you explained this made it feel motivating without becoming overwhelming 👏",
+            "The part with the pasta timing made this feel a lot more doable for a busy weeknight",
+            "I liked how simple this pasta recipe felt without making it seem boring at all 🍝",
         ])
 
     if "recipe" in title or niche == "food":
         specific.extend([
-            "The way you showed each step made this recipe feel a lot more doable than I expected",
-            "I liked that this recipe felt practical and still satisfying to watch the whole way through",
+            "The way you showed the steps made this recipe feel realistic enough to actually try",
+            "I liked that this recipe felt practical and still really satisfying to watch",
+        ])
+
+    if "workout" in title or niche == "fitness":
+        specific.extend([
+            "This workout felt realistic enough to actually come back to instead of trying once and quitting",
+            "I liked how direct and motivating this felt without becoming too intense",
+        ])
+
+    if "makeup" in title or "skincare" in title or niche == "beauty":
+        specific.extend([
+            "I liked how approachable this look felt instead of making everything seem impossible to recreate",
+            "The way you explained the routine made it feel much more wearable and real",
+        ])
+
+    if "python" in title or "fastapi" in title or niche == "coding":
+        specific.extend([
+            "The way you broke this down made the whole setup feel much less intimidating",
+            "I liked that this stayed practical instead of turning into an overly long explanation",
+        ])
+
+    if "travel" in title or "vlog" in title or niche == "travel":
+        specific.extend([
+            "The way you put this together made the whole vlog feel really easy to stay with",
+            "I liked how this captured the mood without trying too hard to force it 🌍",
         ])
 
     pool = specific + RULE_BASED_COMMENTS
     random.shuffle(pool)
-
     return normalize_comments(pool)[:3]
 
 
@@ -352,7 +298,7 @@ def ensure_three_comments(comments: List[str], video) -> List[str]:
         return final_comments[:3]
 
     fallback = generate_rule_based_comments(video)
-    seen = {c.lower() for c in final_comments}
+    seen = {comment.lower() for comment in final_comments}
 
     for item in fallback:
         if len(final_comments) >= 3:
