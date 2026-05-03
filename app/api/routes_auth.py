@@ -2,7 +2,10 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
+from app.core.config import settings
+from app.services.email_service import send_email_verification_email
+from app.services.email_verification_service import create_email_verification_token
 from app.api.deps import get_current_user, get_db
 from app.core.limiter import limiter
 from app.models.user import User
@@ -28,10 +31,14 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-
 @router.post("/register", response_model=TokenResponse)
 @limiter.limit("5/minute")
-def register(request: Request, payload: UserRegisterRequest, db: Session = Depends(get_db)):
+def register(
+    request: Request,
+    payload: UserRegisterRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     normalized_email = normalize_email(payload.email)
 
     existing = get_user_by_email(db, normalized_email)
@@ -47,6 +54,8 @@ def register(request: Request, payload: UserRegisterRequest, db: Session = Depen
         payment_status="unpaid",
         free_search_count=0,
         failed_login_attempts=0,
+        is_email_verified=False,
+        role="user",
     )
 
     db.add(user)
@@ -54,6 +63,15 @@ def register(request: Request, payload: UserRegisterRequest, db: Session = Depen
     db.refresh(user)
 
     token = create_access_token(user.id, user.email)
+
+    _, verification_token = create_email_verification_token(db, user.email)
+    if verification_token:
+        verification_link = f"{settings.FRONTEND_URL}/?verify_token={verification_token.token}"
+        background_tasks.add_task(
+            send_email_verification_email,
+            user.email,
+            verification_link,
+        )
 
     return TokenResponse(
         access_token=token,

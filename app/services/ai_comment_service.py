@@ -8,79 +8,74 @@ from app.core.config import settings
 
 
 SYSTEM_PROMPT = """
-You write natural YouTube comments that feel like they were written by a real person.
+You write natural YouTube comments that feel like they were written by a real viewer.
 
 Main goals:
 - Sound warm, believable, and human
+- Feel clearly connected to the actual video
 - Leave a memorable impression on the creator
-- Indirectly increase the chance that the creator notices the commenter and visit your channel too
+- Indirectly increase the chance that the creator notices the commenter
 - Make the creator feel seen, appreciated, and a little curious
-- Use some emojis in a natural way when it fits.
 
 Rules:
 - Write exactly 3 comment options
-- Each comment should feel like it was written by someone who actually watched the video
+- Each comment should feel like it came from someone who actually watched the video
+- Use specific details from the title or description when possible
+- Mention a real topic, step, theme, moment, angle, or style from the video
+- Avoid generic praise unless combined with something specific
 - Comments should be supportive, natural, and slightly personal
-- Keep comments between 14 and 30 words
+- Keep comments between 8 and 28 words
 - No bullet points
 - No dashes
 - No numbering
 - No quotation marks
 - No hashtags
-- Use 1 or 3 emoji per comment
+- Use 0 or 1 emoji per comment
 - Not every comment should include an emoji
-- Avoid robotic phrases
-- Avoid generic phrases like:
+- Do not self-promote
+- Do not ask for follow back, subscribe back, support back, or channel check
+- Avoid robotic phrases and generic phrases like:
   great content
   valuable content
+  amazing video
+  nice video
+  very helpful
   thanks for sharing
   keep it up
-  amazing video
-- Do not ask for follow back, subscribe back, support back, or channel check
-- Do not self-promote but the comments can still make the creator curious about the commenter in a subtle way
-- Make the 3 comments clearly different from each other and avoid repeating the same phrases across comments
-- 1 comment can be friendly, the other one can be curiosity-driven, the other one can be more focused on praising the creator's style for example
-- Some comments can mention the creator's style, pacing, clarity, or channel vibe in a subtle way
-- Try to understand the description and title to get a sense of the creator's approach and what they might appreciate hearing in the comments
-- Sometimes highlight that you like this video and that it made you want to check out more of their channel
-- Don't forget that we comment to create a connection with the creator, so it`s not just about sounding natural, but also making the creator feel a certain way that increases the chance they check out the commenter's channel
-- We want to grow our channel by building genuine connections with creatorers, so the comments should be crafted with that in mind
+- Make the 3 comments clearly different from each other
 """
 
 
 RULE_BASED_COMMENTS = [
-    "This was such an easy watch, and now I’m genuinely curious what else is on your channel 👀",
-    "You have a really natural way of explaining things, which honestly makes people want to keep watching",
-    "I found this video randomly and ended up staying way longer than I expected",
-    "There’s something really watchable about your style, it doesn’t feel forced at all",
-    "This actually felt super clear without dragging, which is rarer than people think",
-    "This was my first video from your channel and it honestly made a really strong impression",
-    "You made this feel approachable in a way that keeps people from clicking away 👏",
-    "I can already tell this is the kind of channel people end up coming back to",
-    "This had such a nice balance of useful and easy to follow, which is not easy to do",
-    "I clicked for the topic but ended up noticing how easy your videos are to stay with",
-    "This felt a lot more genuine than most videos in this niche, and that really stands out",
-    "You explain things in a way that makes the whole channel feel worth exploring a bit more",
-    "This was honestly a really solid first video to land on from your channel",
-    "You have one of those styles that makes people want to check one more upload before leaving",
-    "This was way more engaging than I expected, and I mean that in the best way",
+    "The way you structured this made it feel much easier to follow than I expected",
+    "I liked how specific this felt instead of dragging everything out for no reason",
+    "This was such a solid first video to land on from your channel honestly",
+    "You have a way of explaining things that makes people want to stay a little longer",
+    "This felt much more intentional than most videos I come across in this niche",
+    "I clicked for the topic but the pacing is what made me keep watching 👀",
+    "There’s something really watchable about the way you put these videos together",
+    "This made the whole topic feel more approachable without watering it down",
+    "The clarity in this really stands out fast, especially in this niche",
 ]
 
 
 BANNED_PATTERNS = [
     r"\bgreat content\b",
     r"\bvaluable content\b",
+    r"\bthanks for sharing\b",
     r"\bkeep it up\b",
     r"\bamazing video\b",
+    r"\bnice video\b",
+    r"\bvery helpful\b",
     r"\bsupport me too\b",
     r"\bsub back\b",
     r"\bsubscribe back\b",
+    r"\bcheck my channel\b",
+    r"\bcheck out my channel\b",
     r"\bcheck out my page\b",
     r"\bvisit my channel\b",
     r"\bvisit my page\b",
     r"\bfollow me\b",
-    r"\bcome to my channel\b",
-    r"\bcome check\b",
 ]
 
 
@@ -89,7 +84,18 @@ INTRO_PATTERNS = [
     r"^here's\b",
     r"^below are\b",
     r"^these are\b",
+    r"^three natural youtube comments\b",
     r"^youtube comments for\b",
+]
+
+
+GENERIC_PATTERNS = [
+    r"\bnice video\b",
+    r"\bgreat video\b",
+    r"\bgreat content\b",
+    r"\bvery helpful\b",
+    r"\bloved this\b$",
+    r"\bthis was helpful\b$",
 ]
 
 
@@ -99,7 +105,7 @@ def clean_comment_line(text: str) -> str:
     value = re.sub(r"^\s*[-*•]+\s*", "", value)
     value = re.sub(r"^\s*\d+[.)]\s*", "", value)
     value = re.sub(r"^\s*[A-Za-z][.)]\s*", "", value)
-    
+
     value = value.replace('"', "")
     value = value.replace("'", "")
     value = value.replace("“", "")
@@ -111,35 +117,35 @@ def clean_comment_line(text: str) -> str:
 
     lowered = value.lower()
     for pattern in INTRO_PATTERNS:
-        if re.search(pattern, lowered):
-            return ""
-
-    if len(value) >= 2:
-        if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
-            value = value[1:-1].strip()
-
-    value = value.replace("“", "").replace("”", "").replace("‘", "").replace("’", "")
-    value = re.sub(r"\s+", " ", value).strip()
-
-    lowered = value.lower()
-    for pattern in INTRO_PATTERNS:
-        if re.search(pattern, lowered):
-            return ""
+      if re.search(pattern, lowered):
+          return ""
 
     return value
 
 
 def looks_spammy(text: str) -> bool:
     lowered = text.lower().strip()
+
     for pattern in BANNED_PATTERNS:
         if re.search(pattern, lowered):
             return True
+
+    return False
+
+
+def looks_too_generic(text: str) -> bool:
+    lowered = text.lower().strip()
+
+    for pattern in GENERIC_PATTERNS:
+        if re.search(pattern, lowered):
+            return True
+
     return False
 
 
 def is_reasonable_length(text: str) -> bool:
     words = text.split()
-    return 8 <= len(words) <= 24
+    return 8 <= len(words) <= 28
 
 
 def normalize_comments(raw_comments: List[str]) -> List[str]:
@@ -153,6 +159,9 @@ def normalize_comments(raw_comments: List[str]) -> List[str]:
             continue
 
         if looks_spammy(value):
+            continue
+
+        if looks_too_generic(value):
             continue
 
         if not is_reasonable_length(value):
@@ -200,21 +209,35 @@ def extract_comments_from_text(text: str) -> List[str]:
     return sentence_comments[:3]
 
 
+def shorten_description(description: str, max_len: int = 500) -> str:
+    if not description:
+        return ""
+    clean = re.sub(r"\s+", " ", description).strip()
+    return clean[:max_len]
+
+
 def build_comment_prompt(video) -> str:
+    title = (video.title or "").strip()
+    description = shorten_description(video.description or "")
+    niche = (video.niche or "").strip()
+
     return f"""
-Video title: {video.title}
+Video title: {title}
+Video description: {description}
 Channel name: {video.channel_name}
-Niche: {video.niche}
+Niche: {niche}
 
 Write 3 natural YouTube comments for this video.
 
-The comments should:
-- feel like they came from someone who genuinely watched
-- feel warm and believable
-- make the creator feel noticed
-- subtly increase the chance that the creator becomes curious about the commenter
-- never directly ask for anything in return
-- avoid sounding polished, corporate, or fake
+Important:
+- Make each comment specific to this video
+- Use real cues from the title or description
+- Mention a concrete detail, topic, step, theme, or style when possible
+- Do not sound generic
+- Do not write a heading or intro sentence
+- Do not say "here are 3 comments"
+- Never directly ask for anything in return
+- Make the comments feel like they came from a real viewer
 """
 
 
@@ -267,50 +290,54 @@ def generate_with_ollama(video) -> List[str]:
 
 def generate_rule_based_comments(video) -> List[str]:
     title = (video.title or "").lower()
+    description = (video.description or "").lower()
     niche = (video.niche or "").lower()
 
-    niche_specific = []
+    specific = []
 
-    if niche == "food":
-        niche_specific = [
-            "This made the whole thing feel a lot less intimidating, and now I kind of want to try it myself 😄",
-            "You somehow made this feel both simple and satisfying to watch, which is a really nice combo",
-            "This was such a good first video to land on from a food channel honestly",
-        ]
-    elif niche == "fitness":
-        niche_specific = [
-            "I like that this felt realistic and not overly intense, which makes it way easier to come back to",
-            "This was actually motivating without feeling pushy, and that makes a big difference 👏",
-            "You made this feel approachable in a way that keeps people from giving up early",
-        ]
-    elif niche == "beauty":
-        niche_specific = [
-            "This looked polished without feeling impossible to recreate, which I really appreciated",
-            "You explain things in such a calm and natural way, it makes the whole channel feel inviting",
-            "This was honestly a really nice first impression of your channel ✨",
-        ]
-    elif niche == "coding":
-        niche_specific = [
-            "This was clearer than most coding videos I run into, and that really stands out fast",
-            "You have a way of explaining this stuff that makes people want to keep watching",
-            "I clicked for the topic but stayed because the pacing actually made sense 👏",
-        ]
-    elif niche == "travel":
-        niche_specific = [
-            "This had such an easy vibe to watch, and now I want to see where else you’ve been",
-            "There’s something about your style that makes the whole channel feel worth exploring a bit more 🌍",
-            "This was such a strong first travel video to come across from your channel",
-        ]
+    if "meal prep" in title or "meal prep" in description:
+        specific.extend([
+            "The way you broke the meal prep into manageable steps made it feel much less overwhelming",
+            "I liked that this meal prep felt realistic instead of trying to make everything look perfect",
+        ])
 
-    title_specific = []
-    if "beginner" in title:
-        title_specific.append("This really felt like something beginners could stay with without getting lost halfway through")
-    if "easy" in title or "simple" in title:
-        title_specific.append("I liked that this stayed simple without making it feel watered down")
-    if "tutorial" in title:
-        title_specific.append("This actually felt like a tutorial someone would finish, which says a lot")
+    if "fastapi" in title or "fastapi" in description:
+        specific.extend([
+            "The way you walked through the FastAPI setup made the whole thing feel much easier to follow",
+            "I liked that you made the FastAPI part feel practical instead of overexplaining every detail",
+        ])
 
-    pool = RULE_BASED_COMMENTS + niche_specific + title_specific
+    if "python" in title or "python" in description:
+        specific.extend([
+            "This made the Python side feel much more approachable than most videos I run into",
+            "I liked that the Python explanation stayed clear without slowing everything down too much",
+        ])
+
+    if "travel" in niche or "vlog" in title or "vlog" in description:
+        specific.extend([
+            "The way you put this vlog together made the whole thing feel really easy to stay with",
+            "I liked that this travel video felt immersive without trying too hard to force the vibe 🌍",
+        ])
+
+    if "makeup" in title or "skincare" in title or niche == "beauty":
+        specific.extend([
+            "I liked how you kept this look approachable instead of making it feel impossible to recreate",
+            "The way you explained each part of this routine made it feel much more wearable and realistic",
+        ])
+
+    if "workout" in title or niche == "fitness":
+        specific.extend([
+            "I liked that this workout felt realistic enough to actually come back to more than once",
+            "The way you explained this made it feel motivating without becoming overwhelming 👏",
+        ])
+
+    if "recipe" in title or niche == "food":
+        specific.extend([
+            "The way you showed each step made this recipe feel a lot more doable than I expected",
+            "I liked that this recipe felt practical and still satisfying to watch the whole way through",
+        ])
+
+    pool = specific + RULE_BASED_COMMENTS
     random.shuffle(pool)
 
     return normalize_comments(pool)[:3]
