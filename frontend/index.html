@@ -18,10 +18,15 @@
       --red: #ef4444;
       --red-dark: #b91c1c;
       --navy: #0f172a;
+      --green-bg: #f0fdf4;
       --green-border: #bbf7d0;
       --green-text: #166534;
+      --blue-bg: #eff6ff;
       --blue-border: #bfdbfe;
       --blue-text: #1d4ed8;
+      --amber-bg: #fffbeb;
+      --amber-border: #fde68a;
+      --amber-text: #92400e;
       --shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
       --radius-xl: 24px;
     }
@@ -48,7 +53,9 @@
     .video-card,
     .paywall,
     .success-banner,
-    .reset-box {
+    .reset-box,
+    .verification-banner,
+    .login-success-banner {
       background: rgba(255,255,255,0.97);
       border: 1px solid var(--line);
       border-radius: var(--radius-xl);
@@ -215,9 +222,7 @@
       letter-spacing: -0.03em;
     }
 
-    .field {
-      margin-bottom: 16px;
-    }
+    .field { margin-bottom: 16px; }
 
     .field label {
       display: block;
@@ -271,7 +276,8 @@
     .copy-button,
     .video-link,
     .forgot-button,
-    .reset-button {
+    .reset-button,
+    .verification-button {
       border: none;
       border-radius: 16px;
       font-family: inherit;
@@ -287,7 +293,8 @@
     .video-link:hover,
     .small-ghost:hover,
     .forgot-button:hover,
-    .reset-button:hover {
+    .reset-button:hover,
+    .verification-button:hover {
       transform: translateY(-1px);
     }
 
@@ -302,7 +309,8 @@
 
     .auth-button,
     .upgrade-button,
-    .reset-button {
+    .reset-button,
+    .verification-button {
       padding: 13px 16px;
       font-size: 15px;
       color: #fff;
@@ -328,28 +336,40 @@
     .success-banner,
     .paywall,
     .results-shell,
-    .reset-box {
+    .reset-box,
+    .verification-banner,
+    .login-success-banner {
       padding: 22px;
       margin-bottom: 16px;
     }
 
-    .success-banner {
+    .success-banner,
+    .login-success-banner {
       display: none;
-      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+      background: linear-gradient(135deg, var(--green-bg) 0%, #ffffff 100%);
       border-color: var(--green-border);
       color: var(--green-text);
     }
 
     .reset-box {
       display: none;
-      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+      background: linear-gradient(135deg, var(--blue-bg) 0%, #ffffff 100%);
       border-color: var(--blue-border);
       color: var(--blue-text);
     }
 
+    .verification-banner {
+      display: none;
+      background: linear-gradient(135deg, var(--amber-bg) 0%, #ffffff 100%);
+      border-color: var(--amber-border);
+      color: var(--amber-text);
+    }
+
     .success-banner h3,
     .paywall h3,
-    .reset-box h3 {
+    .reset-box h3,
+    .verification-banner h3,
+    .login-success-banner h3 {
       margin: 0 0 8px;
       font-size: 22px;
       letter-spacing: -0.03em;
@@ -357,7 +377,9 @@
 
     .success-banner p,
     .paywall p,
-    .reset-box p {
+    .reset-box p,
+    .verification-banner p,
+    .login-success-banner p {
       margin: 0;
       font-size: 16px;
       line-height: 1.5;
@@ -375,7 +397,8 @@
     }
 
     .paywall-actions,
-    .reset-actions {
+    .reset-actions,
+    .verification-actions {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
@@ -426,14 +449,8 @@
       background: #fff;
     }
 
-    .results-list {
-      display: grid;
-      gap: 18px;
-    }
-
-    .video-card {
-      padding: 22px;
-    }
+    .results-list { display: grid; gap: 18px; }
+    .video-card { padding: 22px; }
 
     .video-card-top {
       display: flex;
@@ -459,9 +476,7 @@
       max-width: 700px;
     }
 
-    .meta-item strong {
-      color: var(--text);
-    }
+    .meta-item strong { color: var(--text); }
 
     .engagement-badge {
       min-width: 160px;
@@ -564,8 +579,8 @@
       .auth-form-grid {
         grid-template-columns: 1fr 1fr;
       }
-
-      .auth-form-grid .auth-button {
+      .auth-form-grid .auth-button,
+      .auth-form-grid .reset-button {
         grid-column: 1 / -1;
       }
     }
@@ -575,31 +590,12 @@
         grid-template-columns: 1fr;
         align-items: start;
       }
-
-      .hero-copy h1 {
-        font-size: 40px;
-      }
-
-      .hero-copy p {
-        font-size: 21px;
-      }
-
-      .content {
-        grid-template-columns: 1fr;
-      }
-
-      .panel {
-        position: static;
-      }
-
-      .video-card-top {
-        flex-direction: column;
-      }
-
-      .meta-grid {
-        grid-template-columns: 1fr;
-      }
-
+      .hero-copy h1 { font-size: 40px; }
+      .hero-copy p { font-size: 21px; }
+      .content { grid-template-columns: 1fr; }
+      .panel { position: static; }
+      .video-card-top { flex-direction: column; }
+      .meta-grid { grid-template-columns: 1fr; }
       .results-top {
         flex-direction: column;
         align-items: flex-start;
@@ -607,42 +603,24 @@
     }
 
     @media (max-width: 720px) {
-      .auth-form-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .auth-user {
-        justify-content: flex-start;
-      }
+      .auth-form-grid { grid-template-columns: 1fr; }
+      .auth-user { justify-content: flex-start; }
     }
 
     @media (max-width: 640px) {
-      .container {
-        padding: 18px 14px 28px;
-      }
-
+      .container { padding: 18px 14px 28px; }
       .hero {
         padding: 20px;
         grid-template-columns: 88px 1fr;
         gap: 14px;
       }
-
       .hero-logo {
         width: 88px;
         height: 88px;
       }
-
-      .hero-copy h1 {
-        font-size: 34px;
-      }
-
-      .hero-copy p {
-        font-size: 18px;
-      }
-
-      .grid-two {
-        grid-template-columns: 1fr;
-      }
+      .hero-copy h1 { font-size: 34px; }
+      .hero-copy p { font-size: 18px; }
+      .grid-two { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -679,6 +657,20 @@
       <div id="authStatus" class="status"></div>
     </section>
 
+    <section id="loginSuccessBanner" class="login-success-banner">
+      <h3>Success</h3>
+      <p id="loginSuccessText">Action completed successfully.</p>
+    </section>
+
+    <section id="verificationBanner" class="verification-banner">
+      <h3>Email verification needed</h3>
+      <p id="verificationText">Please verify your email before using search.</p>
+      <div class="verification-actions">
+        <button id="resendVerificationButton" class="verification-button" type="button">Resend verification email</button>
+      </div>
+      <div id="verificationStatus" class="status"></div>
+    </section>
+
     <section id="resetBox" class="reset-box">
       <h3>Reset your password</h3>
       <p id="resetInfoText">Enter your new password to complete the reset.</p>
@@ -700,7 +692,9 @@
       <div class="hero-copy">
         <h1>YouTube Creator Discovery Assistant</h1>
         <p>Discover the right creators, write smarter comments with AI, and grow faster.</p>
-        <div class="hero-subtext">Find small creators in your niche, explore relevant videos, and choose AI-assisted comment suggestions designed to feel natural and creator-friendly.</div>
+        <div class="hero-subtext">
+          Find small creators in your niche, explore relevant videos, and choose AI-assisted comment suggestions designed to feel natural and creator-friendly.
+        </div>
       </div>
     </section>
 
@@ -805,6 +799,14 @@
     const authFormGridEl = document.getElementById('authFormGrid');
     const forgotPasswordButtonEl = document.getElementById('forgotPasswordButton');
 
+    const loginSuccessBannerEl = document.getElementById('loginSuccessBanner');
+    const loginSuccessTextEl = document.getElementById('loginSuccessText');
+
+    const verificationBannerEl = document.getElementById('verificationBanner');
+    const verificationTextEl = document.getElementById('verificationText');
+    const verificationStatusEl = document.getElementById('verificationStatus');
+    const resendVerificationButtonEl = document.getElementById('resendVerificationButton');
+
     const resetBoxEl = document.getElementById('resetBox');
     const resetInfoTextEl = document.getElementById('resetInfoText');
     const resetPasswordInputEl = document.getElementById('resetPasswordInput');
@@ -849,10 +851,21 @@
       updateAuthUI();
     }
 
-    function isPaidUser(user) {
-      return !!user &&
+    function hasFullAccess(user) {
+      if (!user) return false;
+
+      const isAdmin = user.role === 'admin';
+      const isPaid =
         (user.plan_type === 'paid' || user.plan_type === 'premium') &&
         user.payment_status === 'paid';
+
+      return isAdmin || isPaid;
+    }
+
+    function isEmailVerified(user) {
+      if (!user) return false;
+      if (user.role === 'admin') return true;
+      return !!user.is_email_verified;
     }
 
     function updateAuthModeUI() {
@@ -865,7 +878,7 @@
       if (!getStoredUser()) {
         authStatusEl.textContent = isLogin
           ? 'Log in to continue where you left off.'
-          : 'Create your account to get 5 free searches.';
+          : 'Create your account to get started.';
       }
     }
 
@@ -878,6 +891,18 @@
       successBannerEl.style.display = 'none';
     }
 
+    function showLoginSuccessBanner(message) {
+      loginSuccessTextEl.textContent = message || 'Success.';
+      loginSuccessBannerEl.style.display = 'block';
+      setTimeout(() => {
+        loginSuccessBannerEl.style.display = 'none';
+      }, 4000);
+    }
+
+    function hideLoginSuccessBanner() {
+      loginSuccessBannerEl.style.display = 'none';
+    }
+
     function showPaywall(message) {
       hideSuccessBanner();
       paywallTextEl.textContent = message || `You used your 5 free searches. Unlock full access for a one-time payment of ${ONE_TIME_PRICE_LABEL}.`;
@@ -886,6 +911,16 @@
 
     function hidePaywall() {
       paywallBoxEl.style.display = 'none';
+    }
+
+    function showVerificationBanner(message) {
+      verificationTextEl.textContent = message || 'Please verify your email before using search.';
+      verificationBannerEl.style.display = 'block';
+    }
+
+    function hideVerificationBanner() {
+      verificationBannerEl.style.display = 'none';
+      verificationStatusEl.textContent = '';
     }
 
     function showResetBox(token) {
@@ -906,7 +941,8 @@
       const user = getStoredUser();
 
       if (user) {
-        const paid = isPaidUser(user);
+        const fullAccess = hasFullAccess(user);
+        const verified = isEmailVerified(user);
         const remaining = Math.max(0, 5 - (user.free_search_count || 0));
 
         userChipEl.style.display = 'inline-flex';
@@ -916,16 +952,29 @@
         authModeLoginEl.style.display = 'none';
         authModeRegisterEl.style.display = 'none';
 
-        userChipEl.textContent = `${user.email} • ${paid ? 'paid' : user.plan_type}`;
-        authStatusEl.textContent = paid
-          ? 'Welcome back. Your paid access is active.'
-          : `Welcome back. You have ${remaining} free searches left.`;
+        const badge = user.role === 'admin' ? 'admin' : (fullAccess ? 'paid' : user.plan_type);
+        userChipEl.textContent = `${user.email} • ${badge}`;
 
-        searchStatusEl.textContent = paid
-          ? 'Paid access unlocked. Search as much as you want.'
-          : 'Your free searches are tracked on your account.';
+        if (!verified) {
+          authStatusEl.textContent = 'Your account is created. Please verify your email to start using search.';
+          searchStatusEl.textContent = 'Please verify your email before using search.';
+          showVerificationBanner('We sent a verification email to your address. Please confirm it before using search.');
+        } else {
+          hideVerificationBanner();
+          authStatusEl.textContent = fullAccess
+            ? (user.role === 'admin'
+                ? 'Welcome back. Your admin access is active.'
+                : 'Welcome back. Your paid access is active.')
+            : `Welcome back. You have ${remaining} free searches left.`;
 
-        if (paid) {
+          searchStatusEl.textContent = fullAccess
+            ? (user.role === 'admin'
+                ? 'Admin access unlocked. You can search without limits.'
+                : 'Paid access unlocked. Search as much as you want.')
+            : 'Your free searches are tracked on your account.';
+        }
+
+        if (fullAccess) {
           hidePaywall();
         }
       } else {
@@ -936,6 +985,7 @@
         authModeLoginEl.style.display = 'inline-flex';
         authModeRegisterEl.style.display = 'inline-flex';
         searchStatusEl.textContent = 'You can explore the app first. Sign in when you are ready to run your first search.';
+        hideVerificationBanner();
       }
     }
 
@@ -986,34 +1036,31 @@
     }
 
     function copyToClipboard(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    return navigator.clipboard.writeText(text);
-  }
-
-  return new Promise((resolve, reject) => {
-    try {
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      textArea.style.top = '-999999px';
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-
-      const successful = document.execCommand('copy');
-      document.body.removeChild(textArea);
-
-      if (successful) {
-        resolve();
-      } else {
-        reject(new Error('Copy command failed'));
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
       }
-    } catch (error) {
-      reject(error);
+
+      return new Promise((resolve, reject) => {
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = text;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          textArea.style.top = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+
+          if (successful) resolve();
+          else reject(new Error('Copy command failed'));
+        } catch (error) {
+          reject(error);
+        }
+      });
     }
-  });
-}
 
     function buildAuthHeaders(withJson = true) {
       const headers = {};
@@ -1156,9 +1203,14 @@
         }
 
         saveSession(data.access_token, data.user);
-        authStatusEl.textContent = authMode === 'login'
-          ? `Welcome back, ${data.user.email}.`
-          : `Your account is ready, ${data.user.email}. You now have 5 free searches.`;
+
+        if (authMode === 'login') {
+          authStatusEl.textContent = `Welcome back, ${data.user.email}.`;
+          showLoginSuccessBanner(`You are now logged in as ${data.user.email}.`);
+        } else {
+          authStatusEl.textContent = `Your account is ready, ${data.user.email}. Please verify your email to start using search.`;
+          showLoginSuccessBanner(`Account created successfully for ${data.user.email}. Please verify your email.`);
+        }
 
         authEmailEl.value = '';
         authPasswordEl.value = '';
@@ -1191,14 +1243,6 @@
         }
 
         authStatusEl.textContent = data.message || 'Password reset link created.';
-
-        if (data.reset_token) {
-          const params = new URLSearchParams(window.location.search);
-          params.set('reset_token', data.reset_token);
-          window.history.replaceState({}, document.title, `${window.location.pathname}?${params.toString()}`);
-          resetInfoTextEl.textContent = 'A reset token was created. Enter your new password below.';
-          showResetBox(data.reset_token);
-        }
       } catch (error) {
         authStatusEl.textContent = error.message || 'Could not create reset link.';
       }
@@ -1247,6 +1291,56 @@
       }
     }
 
+    async function verifyEmailToken(token) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/email-verification/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Email verification failed.');
+        }
+
+        showSuccessBanner('Email verified successfully. You can now use search.');
+        verificationStatusEl.textContent = 'Email verified successfully.';
+        await refreshCurrentUser();
+        hideVerificationBanner();
+      } catch (error) {
+        verificationStatusEl.textContent = error.message || 'Email verification failed.';
+        showVerificationBanner('Verification link is invalid or expired. You can request a new one below.');
+      }
+    }
+
+    async function resendVerificationEmail() {
+      const user = getStoredUser();
+      if (!user || !user.email) {
+        verificationStatusEl.textContent = 'Please log in first.';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/email-verification/resend`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Could not resend verification email.');
+        }
+
+        verificationStatusEl.textContent = data.message || 'Verification email sent.';
+      } catch (error) {
+        verificationStatusEl.textContent = error.message || 'Could not resend verification email.';
+      }
+    }
+
     async function upgradeUser() {
       try {
         const response = await authenticatedFetch('/billing/create-checkout-session', {
@@ -1267,13 +1361,19 @@
 
     async function loadRecommendations() {
       if (!getToken()) {
-        searchStatusEl.textContent = 'Please create a free account or log in to use your 5 free searches.';
+        searchStatusEl.textContent = 'Please create a free account or log in to use your account.';
         return;
       }
 
       const user = getStoredUser();
       if (!user) {
         searchStatusEl.textContent = 'Session not ready yet. Please try again.';
+        return;
+      }
+
+      if (!isEmailVerified(user)) {
+        showVerificationBanner('Please verify your email before using search.');
+        searchStatusEl.textContent = 'Email verification required.';
         return;
       }
 
@@ -1294,6 +1394,16 @@
           resultsSummaryEl.textContent = 'Unlock required';
           resultsContainerEl.innerHTML = `<div class="empty-state">Your free searches are finished. Unlock full access with a one-time payment of ${ONE_TIME_PRICE_LABEL}.</div>`;
           searchStatusEl.textContent = 'Free limit reached. Unlock to continue.';
+          return;
+        }
+
+        if (response.status === 403) {
+          const data = await response.json().catch(() => ({}));
+          const detail = data.detail || 'Please verify your email before using search.';
+          showVerificationBanner(detail);
+          searchStatusEl.textContent = detail;
+          resultsSummaryEl.textContent = 'Verification required';
+          resultsContainerEl.innerHTML = `<div class="empty-state">${escapeHtml(detail)}</div>`;
           return;
         }
 
@@ -1349,6 +1459,7 @@
     authSubmitButtonEl.addEventListener('click', submitAuth);
     forgotPasswordButtonEl.addEventListener('click', requestPasswordReset);
     resetPasswordButtonEl.addEventListener('click', submitPasswordReset);
+    resendVerificationButtonEl.addEventListener('click', resendVerificationEmail);
 
     logoutButtonEl.addEventListener('click', () => {
       clearSession();
@@ -1362,6 +1473,8 @@
       hidePaywall();
       hideSuccessBanner();
       hideResetBox();
+      hideVerificationBanner();
+      hideLoginSuccessBanner();
     });
 
     upgradeButtonEl.addEventListener('click', upgradeUser);
@@ -1378,7 +1491,7 @@
         await refreshCurrentUser();
         const user = getStoredUser();
 
-        if (isPaidUser(user)) {
+        if (hasFullAccess(user)) {
           showSuccessBanner('Payment successful. Your account is now unlocked and ready to use.');
           searchStatusEl.textContent = 'Payment successful. Full access is active.';
           hidePaywall();
@@ -1399,6 +1512,15 @@
       if (params.get('reset_token')) {
         resetInfoTextEl.textContent = 'Enter your new password to complete the reset.';
         showResetBox(params.get('reset_token'));
+      }
+
+      if (params.get('verify_token')) {
+        const token = params.get('verify_token');
+        showVerificationBanner('Verifying your email...');
+        await verifyEmailToken(token);
+        params.delete('verify_token');
+        const query = params.toString();
+        window.history.replaceState({}, document.title, query ? `${window.location.pathname}?${query}` : window.location.pathname);
       }
     });
   </script>
