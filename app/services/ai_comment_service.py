@@ -20,7 +20,9 @@ Main goals:
 Rules:
 - Write exactly 3 comment options
 - Each comment should feel like it came from someone who actually watched the video
-- Use specific details from the title or description when possible
+- Use specific details from the title or description.
+- Make comments feel personal and specific to this video, not generic enough to be used on any video.
+- Use a few emojis if it fits the vibe, but don't overdo it.
 - Mention a real topic, step, theme, moment, angle, or style from the video
 - Avoid generic praise unless combined with something specific
 - Comments should be supportive, natural, and slightly personal
