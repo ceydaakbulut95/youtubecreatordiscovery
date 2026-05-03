@@ -751,8 +751,8 @@
 
       <main>
         <div id="successBanner" class="success-banner">
-          <h3>Payment successful</h3>
-          <p id="successBannerText">Your account has been unlocked. You now have full access.</p>
+          <h3 id="successBannerTitle">Success</h3>
+          <p id="successBannerText">Action completed successfully.</p>
         </div>
 
         <div id="paywallBox" class="paywall">
@@ -827,7 +827,9 @@
     const paywallBoxEl = document.getElementById('paywallBox');
     const paywallTextEl = document.getElementById('paywallText');
     const upgradeButtonEl = document.getElementById('upgradeButton');
+
     const successBannerEl = document.getElementById('successBanner');
+    const successBannerTitleEl = document.getElementById('successBannerTitle');
     const successBannerTextEl = document.getElementById('successBannerText');
 
     function getToken() {
@@ -882,9 +884,16 @@
       }
     }
 
-    function showSuccessBanner(message) {
-      successBannerTextEl.textContent = message || 'Your account has been unlocked. You now have full access.';
+    function showSuccessBanner(title, message, autoHide = false) {
+      successBannerTitleEl.textContent = title || 'Success';
+      successBannerTextEl.textContent = message || 'Action completed successfully.';
       successBannerEl.style.display = 'block';
+
+      if (autoHide) {
+        setTimeout(() => {
+          hideSuccessBanner();
+        }, 5000);
+      }
     }
 
     function hideSuccessBanner() {
@@ -894,6 +903,7 @@
     function showLoginSuccessBanner(message) {
       loginSuccessTextEl.textContent = message || 'Success.';
       loginSuccessBannerEl.style.display = 'block';
+
       setTimeout(() => {
         loginSuccessBannerEl.style.display = 'none';
       }, 4000);
@@ -1305,7 +1315,11 @@
           throw new Error(data.detail || 'Email verification failed.');
         }
 
-        showSuccessBanner('Email verified successfully. You can now use search.');
+        showSuccessBanner(
+          'Account ready',
+          'Your email was verified successfully. You can now use your 5 free searches.',
+          true
+        );
         verificationStatusEl.textContent = 'Email verified successfully.';
         await refreshCurrentUser();
         hideVerificationBanner();
@@ -1420,6 +1434,7 @@
         const data = await response.json();
         hidePaywall();
         renderResults(data);
+        hideSuccessBanner();
         searchStatusEl.textContent = 'Recommendations loaded.';
         await refreshCurrentUser();
       } catch (error) {
@@ -1492,7 +1507,11 @@
         const user = getStoredUser();
 
         if (hasFullAccess(user)) {
-          showSuccessBanner('Payment successful. Your account is now unlocked and ready to use.');
+          showSuccessBanner(
+            'Payment successful',
+            'Your account is now unlocked and ready to use.',
+            true
+          );
           searchStatusEl.textContent = 'Payment successful. Full access is active.';
           hidePaywall();
         } else {
