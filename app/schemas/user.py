@@ -15,13 +15,14 @@ class UserLoginRequest(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
+    role: str
     plan_type: str
     subscription_status: str
     payment_status: str
     free_search_count: int
     is_active: bool
+    is_email_verified: bool
     created_at: datetime
-    role: str
 
     model_config = {
         "from_attributes": True

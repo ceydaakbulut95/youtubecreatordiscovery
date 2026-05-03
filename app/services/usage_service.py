@@ -3,6 +3,10 @@ from app.core.config import settings
 from app.models.user import User
 
 
+def is_admin_user(user: User) -> bool:
+    return getattr(user, "role", "user") == "admin"
+
+
 def is_paid_user(user: User) -> bool:
     return (
         user.plan_type in {"paid", "premium"}
@@ -10,14 +14,31 @@ def is_paid_user(user: User) -> bool:
     )
 
 
+def has_full_access(user: User) -> bool:
+    return is_admin_user(user) or is_paid_user(user)
+
+
+def enforce_email_verification(user: User):
+    if is_admin_user(user):
+        return
+
+    if not getattr(user, "is_email_verified", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Please verify your email before using search",
+        )
+
+
 def can_use_search(user: User) -> bool:
-    if is_paid_user(user):
+    if has_full_access(user):
         return True
 
     return user.free_search_count < settings.FREE_SEARCH_LIMIT
 
 
 def enforce_search_limit(user: User):
+    enforce_email_verification(user)
+
     if not can_use_search(user):
         raise HTTPException(
             status_code=402,
@@ -30,7 +51,7 @@ def enforce_search_limit(user: User):
 
 
 def increment_search_count(db, user: User):
-    if is_paid_user(user):
+    if has_full_access(user):
         return
 
     user.free_search_count += 1
